@@ -3,7 +3,6 @@
 // Runners
 export { BaseRunner } from "./runners/base";
 export { LocalRunner } from "./runners/local.runner";
-export { SshRunner } from "./runners/ssh.runner";
 export { JenkinsRunner } from "./runners/jenkins.runner";
 
 // JMeter tools

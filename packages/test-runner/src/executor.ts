@@ -7,7 +7,6 @@ import type { TestConfig, ProgressEvent, RunnerType, LocalRunnerConfig, SshRunne
 
 import { BaseRunner } from "./runners/base";
 import { LocalRunner } from "./runners/local.runner";
-import { SshRunner } from "./runners/ssh.runner";
 import { JenkinsRunner } from "./runners/jenkins.runner";
 import { TestQueue } from "./queue/test-queue";
 import { Scheduler } from "./queue/scheduler";
@@ -475,6 +474,7 @@ export class TestExecutor extends EventEmitter {
         jmeterPath: (settingsMap.get("ssh_jmeter_path") as string) || "/usr/bin/jmeter",
         remoteWorkDir: (settingsMap.get("ssh_remote_work_dir") as string) || "/tmp/jmeter",
       };
+      const { SshRunner } = await import("./runners/ssh.runner");
       this.runners.set("ssh", new SshRunner(sshConfig));
     }
 

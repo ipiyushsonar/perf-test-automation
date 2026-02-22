@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getExecutor, JmxValidator } from "@perf-test/test-runner";
 
+export const runtime = "nodejs";
+
 /**
  * POST /api/scripts/[id]/validate — Validate a JMX script
  * Returns structural validation results (ThreadGroups, listeners, etc.)

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getExecutor } from "@perf-test/test-runner";
 
+export const runtime = "nodejs";
+
 /**
  * GET /api/scripts/[id] — Get a single script by ID
  */

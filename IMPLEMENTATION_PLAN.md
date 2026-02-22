@@ -22,6 +22,8 @@ A full-stack TypeScript monorepo application for automating JMeter performance t
 | Confluence      | REST API                            |
 | Deployment      | Same Ubuntu EC2 as JMeter client    |
 
+Note: When deploying the Next.js app to Vercel with SSH-based runners enabled, ensure API routes that use the test runner run on the Node.js runtime and avoid bundling native SSH dependencies at build time.
+
 ---
 
 ## Monorepo Structure
