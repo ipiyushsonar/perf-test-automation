@@ -3,6 +3,8 @@ import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { getExecutor } from "@perf-test/test-runner";
 
+export const runtime = "nodejs";
+
 /**
  * GET /api/scripts — List all JMX scripts
  * Query params: ?scenarioId=1

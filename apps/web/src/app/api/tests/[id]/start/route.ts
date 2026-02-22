@@ -3,6 +3,8 @@ import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { getExecutor } from "@perf-test/test-runner";
 
+export const runtime = "nodejs";
+
 /**
  * POST /api/tests/[id]/start — Queue a test run for execution
  */

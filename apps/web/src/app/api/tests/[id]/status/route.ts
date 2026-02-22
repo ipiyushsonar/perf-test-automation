@@ -3,6 +3,8 @@ import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { getExecutor } from "@perf-test/test-runner";
 
+export const runtime = "nodejs";
+
 /**
  * GET /api/tests/[id]/status — Get detailed status of a test run
  * Includes queue position, cooldown info, and executor status.
