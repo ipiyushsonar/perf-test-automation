@@ -1,0 +1,4 @@
+[install]
+
+# Use symlink backend and classic node_modules layout for Windows compatibility
+node_modules_mode = "classic"
