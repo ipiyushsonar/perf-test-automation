@@ -15,6 +15,7 @@
       "dependencies": {
         "@libsql/client": "^0.14.0",
         "@perf-test/db": "workspace:*",
+        "@perf-test/test-runner": "workspace:*",
         "@perf-test/types": "workspace:*",
         "@radix-ui/react-dialog": "^1.1.0",
         "@radix-ui/react-dropdown-menu": "^2.1.0",
@@ -116,9 +117,11 @@
       "dependencies": {
         "@perf-test/db": "workspace:*",
         "@perf-test/types": "workspace:*",
+        "drizzle-orm": "^0.38.0",
         "ssh2": "^1.16.0",
       },
       "devDependencies": {
+        "@types/node": "^22.0.0",
         "@types/ssh2": "^1.15.0",
         "typescript": "^5.7.0",
       },

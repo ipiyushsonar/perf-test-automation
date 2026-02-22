@@ -12,6 +12,7 @@
   "dependencies": {
     "@perf-test/types": "workspace:*",
     "@perf-test/db": "workspace:*",
+    "@perf-test/test-runner": "workspace:*",
     "@libsql/client": "^0.14.0",
     "drizzle-orm": "^0.38.0",
     "@radix-ui/react-dialog": "^1.1.0",
