@@ -41,7 +41,7 @@ export interface LiveReportData {
   elapsed: number; // seconds since test start
   transactions: AggregateMetric[];
   overall: AggregateMetric;
-  baseline?: BaselineComparison;
+  baselineComparisons?: BaselineComparison[];
 }
 
 export interface BaselineComparison {
