@@ -37,6 +37,7 @@ data/grafana-snapshots/
 # OS
 .DS_Store
 Thumbs.db
+tsconfig.tsbuildinfo
 
 # Logs
 *.log
