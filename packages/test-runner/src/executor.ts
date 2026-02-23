@@ -514,7 +514,8 @@ let _executor: TestExecutor | null = null;
  */
 export function getExecutor(dataDir?: string): TestExecutor {
   if (!_executor) {
-    const dir = dataDir || resolve(process.cwd(), "data");
+    const rootDir = resolve(__dirname, "..", "..");
+    const dir = dataDir || resolve(rootDir, "data");
     _executor = new TestExecutor(dir);
   }
   return _executor;

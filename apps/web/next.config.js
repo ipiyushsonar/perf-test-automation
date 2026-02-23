@@ -8,6 +8,15 @@ const nextConfig = {
     'canvas',
     'chart.js',
   ],
+  outputFileTracingExcludes: {
+    '*': [
+      '**/.next/cache/**/*',
+      '**/.next/static/**/*',
+      '**/node_modules/@swc/core-linux-x64-gnu/**/*',
+      '**/node_modules/@swc/core-linux-x64-musl/**/*',
+      '**/node_modules/@esbuild/linux-x64/**/*',
+    ],
+  },
   webpack(config, { isServer }) {
     // Prevent webpack from trying to bundle native Node addons (.node files).
     // These are loaded at runtime by ssh2/cpu-features/canvas and must not be parsed.
