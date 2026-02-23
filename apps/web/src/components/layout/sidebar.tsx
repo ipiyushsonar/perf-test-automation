@@ -13,6 +13,7 @@ import {
   Activity,
   ChevronLeft,
   ChevronRight,
+  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,11 @@ const navItems = [
     title: "Reports",
     href: "/reports",
     icon: FileText,
+  },
+  {
+    title: "Schedules",
+    href: "/schedules",
+    icon: Clock,
   },
 ];
 
