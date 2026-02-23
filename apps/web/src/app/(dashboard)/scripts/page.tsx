@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -6,38 +9,135 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Upload, FileCode } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Upload, FileCode, Trash2, Download } from "lucide-react";
+
+interface JmxScript {
+  id: number;
+  name: string;
+  description: string | null;
+  filePath: string;
+  fileSize: number | null;
+  isDefault: boolean | null;
+  uploadedAt: string;
+}
 
 export default function ScriptsPage() {
+  const [scripts, setScripts] = useState<JmxScript[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchScripts = async () => {
+    try {
+      const res = await fetch("/api/scripts");
+      const data = await res.json();
+      if (data.success) setScripts(data.data);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchScripts(); }, []);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("name", file.name.replace(".jmx", ""));
+
+    await fetch("/api/scripts", {
+      method: "POST",
+      body: formData,
+    });
+
+    fetchScripts();
+  };
+
+  const handleDelete = async (id: number) => {
+    await fetch(`/api/scripts/${id}`, { method: "DELETE" });
+    fetchScripts();
+  };
+
+  const formatFileSize = (bytes: number | null) => {
+    if (!bytes) return "—";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  };
+
+  if (loading) {
+    return <div className="space-y-6"><Skeleton className="h-8 w-40" /><Skeleton className="h-60" /></div>;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">JMX Scripts</h1>
-          <p className="text-muted-foreground">
-            Upload and manage JMeter test scripts
-          </p>
+          <p className="text-muted-foreground">Upload and manage JMeter test scripts</p>
         </div>
-        <Button>
-          <Upload className="mr-2 h-4 w-4" />
-          Upload Script
+        <Button asChild>
+          <label className="cursor-pointer">
+            <Upload className="mr-2 h-4 w-4" />
+            Upload Script
+            <input type="file" accept=".jmx" className="hidden" onChange={handleUpload} />
+          </label>
         </Button>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Scripts</CardTitle>
-          <CardDescription>
-            JMeter .jmx test plan files
-          </CardDescription>
+          <CardDescription>JMeter .jmx test plan files</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <FileCode className="h-12 w-12 text-muted-foreground/50 mb-3" />
-            <p className="text-sm text-muted-foreground">
-              No scripts uploaded yet. Upload a JMX file to get started.
-            </p>
-          </div>
+          {scripts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <FileCode className="h-12 w-12 text-muted-foreground/50 mb-3" />
+              <p className="text-sm text-muted-foreground">No scripts uploaded yet.</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Size</TableHead>
+                  <TableHead>Uploaded</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {scripts.map((s) => (
+                  <TableRow key={s.id}>
+                    <TableCell className="font-medium font-mono">{s.name}</TableCell>
+                    <TableCell>{s.description || "—"}</TableCell>
+                    <TableCell>{formatFileSize(s.fileSize)}</TableCell>
+                    <TableCell>{new Date(s.uploadedAt).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Download className="h-3 w-3" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(s.id)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>
