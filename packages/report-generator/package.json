@@ -9,11 +9,20 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@perf-test/types": "workspace:*",
     "@perf-test/db": "workspace:*",
-    "exceljs": "^4.4.0"
+    "@perf-test/types": "workspace:*",
+    "canvas": "^3.2.1",
+    "chart.js": "^4.5.1",
+    "drizzle-orm": "^0.38.0",
+    "exceljs": "^4.4.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "typescript": "^5.7.0"
   }
 }
