@@ -33,10 +33,10 @@ const Select: React.FC<SelectProps> = ({
     // Get display label from children
     const items = React.Children.toArray(children) as React.ReactElement[];
     const selectedItem = items.find(
-        (item) => item.props?.value === value
+        (item) => (item.props as { value?: string })?.value === value
     );
     const displayLabel = selectedItem
-        ? selectedItem.props.children
+        ? (selectedItem.props as { children?: React.ReactNode }).children
         : placeholder || "Select...";
 
     React.useEffect(() => {
@@ -65,21 +65,24 @@ const Select: React.FC<SelectProps> = ({
             </button>
             {open && (
                 <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-1 shadow-md animate-in fade-in-0 zoom-in-95">
-                    {items.map((item) => (
-                        <div
-                            key={item.props.value}
-                            className={cn(
-                                "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
-                                item.props.value === value && "bg-accent text-accent-foreground"
-                            )}
-                            onClick={() => {
-                                onValueChange?.(item.props.value);
-                                setOpen(false);
-                            }}
-                        >
-                            {item.props.children}
-                        </div>
-                    ))}
+                    {items.map((item) => {
+                        const itemProps = item.props as { value: string; children?: React.ReactNode };
+                        return (
+                            <div
+                                key={itemProps.value}
+                                className={cn(
+                                    "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                                    itemProps.value === value && "bg-accent text-accent-foreground"
+                                )}
+                                onClick={() => {
+                                    onValueChange?.(itemProps.value);
+                                    setOpen(false);
+                                }}
+                            >
+                                {itemProps.children}
+                            </div>
+                        );
+                    })}
                 </div>
             )}
         </div>

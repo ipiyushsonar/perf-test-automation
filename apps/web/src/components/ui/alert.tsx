@@ -1,6 +1,5 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
-import { AlertCircle, CheckCircle2, Info, AlertTriangle } from "lucide-react"
 
 const alertVariants = {
     default: "bg-background text-foreground",
