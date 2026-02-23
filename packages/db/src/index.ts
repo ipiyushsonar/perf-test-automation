@@ -6,7 +6,7 @@ import { mkdirSync, existsSync } from "fs";
 
 // Find monorepo root by walking up looking for turbo.json
 function findMonorepoRoot(): string {
-  let dir = process.cwd();
+  let dir = __dirname;
   for (let i = 0; i < 10; i++) {
     if (existsSync(resolve(dir, "turbo.json"))) {
       return dir;
@@ -15,8 +15,8 @@ function findMonorepoRoot(): string {
     if (parent === dir) break;
     dir = parent;
   }
-  // Fallback to cwd
-  return process.cwd();
+  // Fallback to two levels up from packages/db/dist or src
+  return resolve(__dirname, "..", "..");
 }
 
 // Resolve database path relative to monorepo root

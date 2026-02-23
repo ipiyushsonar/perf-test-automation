@@ -1,6 +1,6 @@
 import { getDb } from "@perf-test/db";
 import { versions } from "@perf-test/db";
-import { eq, desc } from "drizzle-orm";
+import { desc } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET() {

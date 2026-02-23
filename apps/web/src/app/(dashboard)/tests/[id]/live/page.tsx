@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -102,7 +101,6 @@ export default function LiveReportPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const router = useRouter();
   const [testRunId, setTestRunId] = useState<number | null>(null);
   const [testRun, setTestRun] = useState<TestRun | null>(null);
   const [loading, setLoading] = useState(true);

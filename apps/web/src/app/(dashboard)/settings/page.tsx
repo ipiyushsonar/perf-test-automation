@@ -6,9 +6,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { Save, TestTube } from "lucide-react";
 
 export default function SettingsPage() {
   return (

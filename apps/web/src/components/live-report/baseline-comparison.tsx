@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowDown, ArrowUp, Minus, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
+import { ArrowDown, Minus, TrendingUp, AlertTriangle } from "lucide-react";
 import type { BaselineComparison } from "@perf-test/types";
 
 interface BaselineComparisonTableProps {
