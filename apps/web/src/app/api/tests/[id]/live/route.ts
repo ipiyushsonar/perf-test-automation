@@ -250,6 +250,7 @@ export async function GET(
       };
 
       executor.on("progress", onProgress);
+      executor.on("log", onLog);
 
       metricsInterval = setInterval(fetchMetrics, REFRESH_INTERVAL_MS);
 
@@ -260,6 +261,7 @@ export async function GET(
           clearInterval(metricsInterval);
         }
         executor.off("progress", onProgress);
+        executor.off("log", onLog);
         try {
           controller.close();
         } catch {

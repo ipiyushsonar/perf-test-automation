@@ -6,8 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Plus, Play, Filter } from "lucide-react";
+import { Plus, Play } from "lucide-react";
 import Link from "next/link";
 
 export default function TestsPage() {

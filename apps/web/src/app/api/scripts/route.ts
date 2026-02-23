@@ -1,5 +1,3 @@
-import { getDb, jmxScripts } from "@perf-test/db";
-import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { getExecutor } from "@perf-test/test-runner";
 

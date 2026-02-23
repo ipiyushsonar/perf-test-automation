@@ -35,14 +35,6 @@ interface ProgressEvent {
   };
 }
 
-interface ConnectedEvent {
-  type: "connected";
-  data: {
-    testRunId: number;
-    status: TestStatus;
-  };
-}
-
 interface CompleteEvent {
   type: "complete";
   data: {
@@ -57,14 +49,6 @@ interface ErrorEvent {
     message: string;
   };
 }
-
-type SSEEvent =
-  | LiveMetricEvent
-  | LogEvent
-  | ProgressEvent
-  | ConnectedEvent
-  | CompleteEvent
-  | ErrorEvent;
 
 export interface LiveMetricsData {
   testRunId: number;

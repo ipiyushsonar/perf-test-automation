@@ -1,6 +1,5 @@
 import { getDb } from "@perf-test/db";
 import { scenarios } from "@perf-test/db";
-import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET() {
