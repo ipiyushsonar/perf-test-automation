@@ -15,6 +15,8 @@
     "@perf-test/test-runner": "workspace:*",
     "@perf-test/influxdb-client": "workspace:*",
     "@perf-test/report-generator": "workspace:*",
+    "@perf-test/grafana-client": "workspace:*",
+    "@perf-test/confluence-client": "workspace:*",
     "@libsql/client": "^0.14.0",
     "drizzle-orm": "^0.38.0",
     "@radix-ui/react-dialog": "^1.1.0",
