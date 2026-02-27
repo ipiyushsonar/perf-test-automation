@@ -107,7 +107,7 @@ export default function ScriptsPage() {
                     <TableCell className="font-medium font-mono">{s.name}</TableCell>
                     <TableCell>{s.description || "—"}</TableCell>
                     <TableCell>{formatFileSize(s.fileSize)}</TableCell>
-                    <TableCell>{new Date(s.uploadedAt).toLocaleDateString()}</TableCell>
+                    <TableCell>{s.uploadedAt ? new Date(s.uploadedAt).toLocaleDateString() : "—"}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" className="h-8 w-8">
