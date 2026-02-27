@@ -28,15 +28,15 @@ export async function POST(request: NextRequest) {
       .values({
         name: data.name,
         displayName: data.displayName,
-        description: data.description,
-        testType: data.testType,
-        loadUserCount: data.loadUserCount,
-        stressUserCount: data.stressUserCount,
+        description: data.description ?? null,
+        testType: data.testType ?? "combined",
+        loadUserCount: data.loadUserCount ?? null,
+        stressUserCount: data.stressUserCount ?? null,
         durationMinutes: data.durationMinutes ?? 60,
         rampUpSeconds: data.rampUpSeconds ?? 60,
         cooldownSeconds: data.cooldownSeconds ?? 900,
         defaultJmxScriptId: data.defaultJmxScriptId ?? null,
-        config: data.config,
+        config: data.config ? JSON.stringify(data.config) : null,
       })
       .returning();
 
