@@ -136,26 +136,30 @@ export function useSSE<T = unknown>(
 
 export function useTypedSSE<T extends { type: string }>(
   url: string | null,
-  options: SSEOptions = {}
+  options: SSEOptions & { maxHistory?: number } = {}
 ) {
+  const { maxHistory = 500, ...sseOptions } = options;
   const [events, setEvents] = useState<T[]>([]);
   const [lastEvent, setLastEvent] = useState<T | null>(null);
 
   const { data, isConnected, error, reconnectCount } = useSSE<T>(url, {
-    ...options,
+    ...sseOptions,
     onOpen: () => {
       setEvents([]);
       setLastEvent(null);
-      options.onOpen?.();
+      sseOptions.onOpen?.();
     },
   });
 
   useEffect(() => {
     if (data) {
       setLastEvent(data);
-      setEvents((prev) => [...prev, data]);
+      setEvents((prev) => {
+        const next = [...prev, data];
+        return next.length > maxHistory ? next.slice(-maxHistory) : next;
+      });
     }
-  }, [data]);
+  }, [data, maxHistory]);
 
   return {
     lastEvent,
