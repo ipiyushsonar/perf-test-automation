@@ -1,5 +1,8 @@
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+import { versions } from "./versions";
+import { baselines } from "./baselines";
+import { testRuns } from "./test-runs";
 
 export const reports = sqliteTable("reports", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -8,9 +11,9 @@ export const reports = sqliteTable("reports", {
 
   testRunIds: text("test_run_ids", { mode: "json" }),
 
-  currentVersionId: integer("current_version_id"),
-  previousVersionId: integer("previous_version_id"),
-  baselineId: integer("baseline_id"),
+  currentVersionId: integer("current_version_id").references(() => versions.id),
+  previousVersionId: integer("previous_version_id").references(() => versions.id),
+  baselineId: integer("baseline_id").references(() => baselines.id),
 
   // Output files
   excelFilePath: text("excel_file_path"),
@@ -38,8 +41,8 @@ export const reports = sqliteTable("reports", {
 
 export const grafanaSnapshots = sqliteTable("grafana_snapshots", {
   id: integer("id").primaryKey({ autoIncrement: true }),
-  reportId: integer("report_id"),
-  testRunId: integer("test_run_id"),
+  reportId: integer("report_id").references(() => reports.id),
+  testRunId: integer("test_run_id").references(() => testRuns.id),
 
   dashboardUid: text("dashboard_uid"),
   dashboardName: text("dashboard_name"),
