@@ -2,6 +2,8 @@ import { getDb } from "@perf-test/db";
 import { testRuns } from "@perf-test/db";
 import { desc } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
+import { createTestSchema } from "@/lib/validation";
+import { validateBody, successResponse, errorResponse } from "@/lib/api-utils";
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,12 +19,9 @@ export async function GET(request: NextRequest) {
       .limit(limit)
       .offset(offset);
 
-    return NextResponse.json({ success: true, data: allTests });
+    return successResponse(allTests);
   } catch (error) {
-    return NextResponse.json(
-      { success: false, error: String(error) },
-      { status: 500 }
-    );
+    return errorResponse(error);
   }
 }
 
@@ -31,29 +30,30 @@ export async function POST(request: NextRequest) {
     const db = getDb();
     const body = await request.json();
 
+    const validation = validateBody(createTestSchema, body);
+    if (!validation.success) return validation.response;
+    const data = validation.data;
+
     const [result] = await db
       .insert(testRuns)
       .values({
-        name: body.name,
-        scenarioId: body.scenarioId,
-        testTypeId: body.testTypeId,
-        versionId: body.versionId,
-        jmxScriptId: body.jmxScriptId,
-        baselineId: body.baselineId,
-        runnerType: body.runnerType || "local",
-        runnerConfig: body.runnerConfig,
-        userCount: body.userCount,
-        durationMinutes: body.durationMinutes,
-        rampUpSeconds: body.rampUpSeconds,
+        name: data.name ?? null,
+        scenarioId: data.scenarioId,
+        testTypeId: data.testTypeId,
+        versionId: data.versionId,
+        jmxScriptId: data.jmxScriptId,
+        baselineId: data.baselineId ?? null,
+        runnerType: data.runnerType,
+        runnerConfig: data.runnerConfig,
+        userCount: data.userCount,
+        durationMinutes: data.durationMinutes,
+        rampUpSeconds: data.rampUpSeconds,
         status: "pending",
       })
       .returning();
 
-    return NextResponse.json({ success: true, data: result }, { status: 201 });
+    return successResponse(result, 201);
   } catch (error) {
-    return NextResponse.json(
-      { success: false, error: String(error) },
-      { status: 500 }
-    );
+    return errorResponse(error);
   }
 }

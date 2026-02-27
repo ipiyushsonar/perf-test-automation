@@ -1,6 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getDb, scenarios } from "@perf-test/db";
 import { eq } from "drizzle-orm";
+import { updateScenarioSchema } from "@/lib/validation";
+import { validateBody, successResponse, errorResponse } from "@/lib/api-utils";
 
 export async function GET(
     request: NextRequest,
@@ -16,18 +18,12 @@ export async function GET(
             .limit(1);
 
         if (!scenario) {
-            return NextResponse.json(
-                { success: false, error: "Scenario not found" },
-                { status: 404 }
-            );
+            return errorResponse("Scenario not found", 404);
         }
 
-        return NextResponse.json({ success: true, data: scenario });
+        return successResponse(scenario);
     } catch (error) {
-        return NextResponse.json(
-            { success: false, error: String(error) },
-            { status: 500 }
-        );
+        return errorResponse(error);
     }
 }
 
@@ -40,37 +36,35 @@ export async function PUT(
         const db = getDb();
         const body = await request.json();
 
+        const validation = validateBody(updateScenarioSchema, body);
+        if (!validation.success) return validation.response;
+        const data = validation.data;
+
         const [result] = await db
             .update(scenarios)
             .set({
-                name: body.name,
-                displayName: body.displayName,
-                description: body.description,
-                testType: body.testType,
-                loadUserCount: body.loadUserCount,
-                stressUserCount: body.stressUserCount,
-                durationMinutes: body.durationMinutes,
-                rampUpSeconds: body.rampUpSeconds,
-                cooldownSeconds: body.cooldownSeconds,
-                defaultJmxScriptId: body.defaultJmxScriptId,
-                config: body.config,
+                name: data.name,
+                displayName: data.displayName,
+                description: data.description,
+                testType: data.testType,
+                loadUserCount: data.loadUserCount,
+                stressUserCount: data.stressUserCount,
+                durationMinutes: data.durationMinutes,
+                rampUpSeconds: data.rampUpSeconds,
+                cooldownSeconds: data.cooldownSeconds,
+                defaultJmxScriptId: data.defaultJmxScriptId,
+                config: data.config,
             })
             .where(eq(scenarios.id, Number(id)))
             .returning();
 
         if (!result) {
-            return NextResponse.json(
-                { success: false, error: "Scenario not found" },
-                { status: 404 }
-            );
+            return errorResponse("Scenario not found", 404);
         }
 
-        return NextResponse.json({ success: true, data: result });
+        return successResponse(result);
     } catch (error) {
-        return NextResponse.json(
-            { success: false, error: String(error) },
-            { status: 500 }
-        );
+        return errorResponse(error);
     }
 }
 
@@ -88,17 +82,11 @@ export async function DELETE(
             .returning();
 
         if (!deleted) {
-            return NextResponse.json(
-                { success: false, error: "Scenario not found" },
-                { status: 404 }
-            );
+            return errorResponse("Scenario not found", 404);
         }
 
-        return NextResponse.json({ success: true, message: "Scenario deleted" });
+        return successResponse({ message: "Scenario deleted" });
     } catch (error) {
-        return NextResponse.json(
-            { success: false, error: String(error) },
-            { status: 500 }
-        );
+        return errorResponse(error);
     }
 }

@@ -1,6 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getDb, baselines } from "@perf-test/db";
-import { eq, desc } from "drizzle-orm";
+import { desc } from "drizzle-orm";
+import { createBaselineSchema } from "@/lib/validation";
+import { validateBody, successResponse, errorResponse } from "@/lib/api-utils";
 
 export async function GET() {
     try {
@@ -10,12 +12,9 @@ export async function GET() {
             .from(baselines)
             .orderBy(desc(baselines.createdAt));
 
-        return NextResponse.json({ success: true, data: allBaselines });
+        return successResponse(allBaselines);
     } catch (error) {
-        return NextResponse.json(
-            { success: false, error: String(error) },
-            { status: 500 }
-        );
+        return errorResponse(error);
     }
 }
 
@@ -24,25 +23,24 @@ export async function POST(request: NextRequest) {
         const db = getDb();
         const body = await request.json();
 
+        const validation = validateBody(createBaselineSchema, body);
+        if (!validation.success) return validation.response;
+        const data = validation.data;
+
         const [result] = await db
             .insert(baselines)
             .values({
-                name: body.name,
-                description: body.description,
-                scenarioId: body.scenarioId,
-                testTypeId: body.testTypeId,
-                versionId: body.versionId,
-                sourceTestRunId: body.sourceTestRunId,
-                metrics: body.metrics,
-                isDefault: body.isDefault || false,
+                name: data.name,
+                description: data.description,
+                scenarioId: data.scenarioId,
+                testTypeId: data.testTypeId,
+                versionId: data.versionId,
+                sourceTestRunId: data.sourceTestRunId ?? null,
             })
             .returning();
 
-        return NextResponse.json({ success: true, data: result }, { status: 201 });
+        return successResponse(result, 201);
     } catch (error) {
-        return NextResponse.json(
-            { success: false, error: String(error) },
-            { status: 500 }
-        );
+        return errorResponse(error);
     }
 }

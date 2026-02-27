@@ -1,6 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getDb, baselines } from "@perf-test/db";
 import { eq } from "drizzle-orm";
+import { updateBaselineSchema } from "@/lib/validation";
+import { validateBody, successResponse, errorResponse } from "@/lib/api-utils";
 
 export async function GET(
     request: NextRequest,
@@ -16,18 +18,12 @@ export async function GET(
             .limit(1);
 
         if (!baseline) {
-            return NextResponse.json(
-                { success: false, error: "Baseline not found" },
-                { status: 404 }
-            );
+            return errorResponse("Baseline not found", 404);
         }
 
-        return NextResponse.json({ success: true, data: baseline });
+        return successResponse(baseline);
     } catch (error) {
-        return NextResponse.json(
-            { success: false, error: String(error) },
-            { status: 500 }
-        );
+        return errorResponse(error);
     }
 }
 
@@ -40,29 +36,26 @@ export async function PUT(
         const db = getDb();
         const body = await request.json();
 
+        const validation = validateBody(updateBaselineSchema, body);
+        if (!validation.success) return validation.response;
+        const data = validation.data;
+
         const [result] = await db
             .update(baselines)
             .set({
-                name: body.name,
-                description: body.description,
-                metrics: body.metrics,
+                name: data.name,
+                description: data.description,
             })
             .where(eq(baselines.id, Number(id)))
             .returning();
 
         if (!result) {
-            return NextResponse.json(
-                { success: false, error: "Baseline not found" },
-                { status: 404 }
-            );
+            return errorResponse("Baseline not found", 404);
         }
 
-        return NextResponse.json({ success: true, data: result });
+        return successResponse(result);
     } catch (error) {
-        return NextResponse.json(
-            { success: false, error: String(error) },
-            { status: 500 }
-        );
+        return errorResponse(error);
     }
 }
 
@@ -80,17 +73,11 @@ export async function DELETE(
             .returning();
 
         if (!deleted) {
-            return NextResponse.json(
-                { success: false, error: "Baseline not found" },
-                { status: 404 }
-            );
+            return errorResponse("Baseline not found", 404);
         }
 
-        return NextResponse.json({ success: true, message: "Baseline deleted" });
+        return successResponse({ message: "Baseline deleted" });
     } catch (error) {
-        return NextResponse.json(
-            { success: false, error: String(error) },
-            { status: 500 }
-        );
+        return errorResponse(error);
     }
 }

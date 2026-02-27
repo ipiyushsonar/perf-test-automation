@@ -1,17 +1,16 @@
 import { getDb } from "@perf-test/db";
 import { scenarios } from "@perf-test/db";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { createScenarioSchema } from "@/lib/validation";
+import { validateBody, successResponse, errorResponse } from "@/lib/api-utils";
 
 export async function GET() {
   try {
     const db = getDb();
     const allScenarios = await db.select().from(scenarios).orderBy(scenarios.name);
-    return NextResponse.json({ success: true, data: allScenarios });
+    return successResponse(allScenarios);
   } catch (error) {
-    return NextResponse.json(
-      { success: false, error: String(error) },
-      { status: 500 }
-    );
+    return errorResponse(error);
   }
 }
 
@@ -20,28 +19,29 @@ export async function POST(request: NextRequest) {
     const db = getDb();
     const body = await request.json();
 
+    const validation = validateBody(createScenarioSchema, body);
+    if (!validation.success) return validation.response;
+    const data = validation.data;
+
     const [result] = await db
       .insert(scenarios)
       .values({
-        name: body.name,
-        displayName: body.displayName,
-        description: body.description,
-        testType: body.testType || "combined",
-        loadUserCount: body.loadUserCount,
-        stressUserCount: body.stressUserCount,
-        durationMinutes: body.durationMinutes || 60,
-        rampUpSeconds: body.rampUpSeconds || 60,
-        cooldownSeconds: body.cooldownSeconds || 900,
-        defaultJmxScriptId: body.defaultJmxScriptId,
-        config: body.config,
+        name: data.name,
+        displayName: data.displayName,
+        description: data.description,
+        testType: data.testType,
+        loadUserCount: data.loadUserCount,
+        stressUserCount: data.stressUserCount,
+        durationMinutes: data.durationMinutes ?? 60,
+        rampUpSeconds: data.rampUpSeconds ?? 60,
+        cooldownSeconds: data.cooldownSeconds ?? 900,
+        defaultJmxScriptId: data.defaultJmxScriptId ?? null,
+        config: data.config,
       })
       .returning();
 
-    return NextResponse.json({ success: true, data: result }, { status: 201 });
+    return successResponse(result, 201);
   } catch (error) {
-    return NextResponse.json(
-      { success: false, error: String(error) },
-      { status: 500 }
-    );
+    return errorResponse(error);
   }
 }

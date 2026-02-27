@@ -1,7 +1,9 @@
 import { getDb } from "@perf-test/db";
 import { versions } from "@perf-test/db";
 import { desc } from "drizzle-orm";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { createVersionSchema } from "@/lib/validation";
+import { validateBody, successResponse, errorResponse } from "@/lib/api-utils";
 
 export async function GET() {
   try {
@@ -10,12 +12,9 @@ export async function GET() {
       .select()
       .from(versions)
       .orderBy(desc(versions.createdAt));
-    return NextResponse.json({ success: true, data: allVersions });
+    return successResponse(allVersions);
   } catch (error) {
-    return NextResponse.json(
-      { success: false, error: String(error) },
-      { status: 500 }
-    );
+    return errorResponse(error);
   }
 }
 
@@ -24,21 +23,22 @@ export async function POST(request: NextRequest) {
     const db = getDb();
     const body = await request.json();
 
+    const validation = validateBody(createVersionSchema, body);
+    if (!validation.success) return validation.response;
+    const data = validation.data;
+
     const [result] = await db
       .insert(versions)
       .values({
-        version: body.version,
-        displayName: body.displayName,
-        description: body.description,
-        releaseDate: body.releaseDate ? new Date(body.releaseDate) : undefined,
+        version: data.version,
+        displayName: data.displayName,
+        description: data.description,
+        releaseDate: data.releaseDate ? new Date(data.releaseDate) : undefined,
       })
       .returning();
 
-    return NextResponse.json({ success: true, data: result }, { status: 201 });
+    return successResponse(result, 201);
   } catch (error) {
-    return NextResponse.json(
-      { success: false, error: String(error) },
-      { status: 500 }
-    );
+    return errorResponse(error);
   }
 }
