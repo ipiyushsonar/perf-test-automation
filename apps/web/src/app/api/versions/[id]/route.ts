@@ -1,6 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getDb, versions } from "@perf-test/db";
 import { eq } from "drizzle-orm";
+import { updateVersionSchema } from "@/lib/validation";
+import { validateBody, successResponse, errorResponse } from "@/lib/api-utils";
 
 export async function GET(
     request: NextRequest,
@@ -16,18 +18,12 @@ export async function GET(
             .limit(1);
 
         if (!version) {
-            return NextResponse.json(
-                { success: false, error: "Version not found" },
-                { status: 404 }
-            );
+            return errorResponse("Version not found", 404);
         }
 
-        return NextResponse.json({ success: true, data: version });
+        return successResponse(version);
     } catch (error) {
-        return NextResponse.json(
-            { success: false, error: String(error) },
-            { status: 500 }
-        );
+        return errorResponse(error);
     }
 }
 
@@ -40,30 +36,28 @@ export async function PUT(
         const db = getDb();
         const body = await request.json();
 
+        const validation = validateBody(updateVersionSchema, body);
+        if (!validation.success) return validation.response;
+        const data = validation.data;
+
         const [result] = await db
             .update(versions)
             .set({
-                version: body.version,
-                displayName: body.displayName,
-                releaseDate: body.releaseDate ? new Date(body.releaseDate) : null,
-                description: body.description,
+                version: data.version,
+                displayName: data.displayName,
+                releaseDate: data.releaseDate ? new Date(data.releaseDate) : undefined,
+                description: data.description,
             })
             .where(eq(versions.id, Number(id)))
             .returning();
 
         if (!result) {
-            return NextResponse.json(
-                { success: false, error: "Version not found" },
-                { status: 404 }
-            );
+            return errorResponse("Version not found", 404);
         }
 
-        return NextResponse.json({ success: true, data: result });
+        return successResponse(result);
     } catch (error) {
-        return NextResponse.json(
-            { success: false, error: String(error) },
-            { status: 500 }
-        );
+        return errorResponse(error);
     }
 }
 
@@ -81,17 +75,11 @@ export async function DELETE(
             .returning();
 
         if (!deleted) {
-            return NextResponse.json(
-                { success: false, error: "Version not found" },
-                { status: 404 }
-            );
+            return errorResponse("Version not found", 404);
         }
 
-        return NextResponse.json({ success: true, message: "Version deleted" });
+        return successResponse({ message: "Version deleted" });
     } catch (error) {
-        return NextResponse.json(
-            { success: false, error: String(error) },
-            { status: 500 }
-        );
+        return errorResponse(error);
     }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -31,6 +31,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Plus, Activity, Trash2, Star } from "lucide-react";
+import { useBaselines, useCreateBaseline, useSetDefaultBaseline, useDeleteBaseline } from "@/lib/api/queries";
 
 interface Baseline {
   id: number;
@@ -45,53 +46,44 @@ interface Baseline {
 }
 
 export default function BaselinesPage() {
-  const [baselines, setBaselines] = useState<Baseline[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: baselines = [], isLoading } = useBaselines();
+  const createBaseline = useCreateBaseline();
+  const setDefaultBaseline = useSetDefaultBaseline();
+  const deleteBaseline = useDeleteBaseline();
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [formData, setFormData] = useState({ name: "", description: "", sourceTestRunId: "" });
 
-  const fetchBaselines = async () => {
-    try {
-      const res = await fetch("/api/baselines");
-      const data = await res.json();
-      if (data.success) setBaselines(data.data);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const isSubmitting = createBaseline.isPending;
 
-  useEffect(() => { fetchBaselines(); }, []);
-
-  const handleCreate = async () => {
-    await fetch("/api/baselines", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+  const handleCreate = () => {
+    createBaseline.mutate(
+      {
         name: formData.name,
         description: formData.description,
         sourceTestRunId: formData.sourceTestRunId ? Number(formData.sourceTestRunId) : null,
-      }),
-    });
-    setDialogOpen(false);
-    fetchBaselines();
+      },
+      { onSuccess: () => setDialogOpen(false) }
+    );
   };
 
-  const handleSetDefault = async (id: number) => {
-    await fetch(`/api/baselines/${id}/set-default`, { method: "POST" });
-    fetchBaselines();
+  const handleSetDefault = (id: number) => {
+    setDefaultBaseline.mutate(id);
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!deletingId) return;
-    await fetch(`/api/baselines/${deletingId}`, { method: "DELETE" });
-    setDeleteDialogOpen(false);
-    setDeletingId(null);
-    fetchBaselines();
+    deleteBaseline.mutate(deletingId, {
+      onSuccess: () => {
+        setDeleteDialogOpen(false);
+        setDeletingId(null);
+      },
+    });
   };
 
-  if (loading) {
+  if (isLoading) {
     return <div className="space-y-6"><Skeleton className="h-8 w-40" /><Skeleton className="h-60" /></div>;
   }
 
@@ -186,7 +178,9 @@ export default function BaselinesPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreate}>Create</Button>
+            <Button onClick={handleCreate} disabled={isSubmitting}>
+              {isSubmitting ? "Creating..." : "Create"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -199,7 +193,9 @@ export default function BaselinesPage() {
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDelete}>Delete</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleteBaseline.isPending}>
+              {deleteBaseline.isPending ? "Deleting..." : "Delete"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

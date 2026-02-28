@@ -1,6 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getDb, schedules } from "@perf-test/db";
 import { eq } from "drizzle-orm";
+import { updateScheduleSchema } from "@/lib/validation";
+import { validateBody, successResponse, errorResponse } from "@/lib/api-utils";
 
 export async function GET(
     request: NextRequest,
@@ -16,18 +18,12 @@ export async function GET(
             .limit(1);
 
         if (!schedule) {
-            return NextResponse.json(
-                { success: false, error: "Schedule not found" },
-                { status: 404 }
-            );
+            return errorResponse("Schedule not found", 404);
         }
 
-        return NextResponse.json({ success: true, data: schedule });
+        return successResponse(schedule);
     } catch (error) {
-        return NextResponse.json(
-            { success: false, error: String(error) },
-            { status: 500 }
-        );
+        return errorResponse(error);
     }
 }
 
@@ -40,34 +36,32 @@ export async function PUT(
         const db = getDb();
         const body = await request.json();
 
+        const validation = validateBody(updateScheduleSchema, body);
+        if (!validation.success) return validation.response;
+        const data = validation.data;
+
         const [result] = await db
             .update(schedules)
             .set({
-                name: body.name,
-                description: body.description,
-                cronExpression: body.cronExpression,
-                scenarioId: body.scenarioId,
-                testTypeId: body.testTypeId,
-                versionId: body.versionId,
-                jmxScriptId: body.jmxScriptId,
-                isActive: body.isActive,
+                name: data.name,
+                description: data.description,
+                cronExpression: data.cronExpression,
+                scenarioId: data.scenarioId,
+                testTypeId: data.testTypeId,
+                versionId: data.versionId,
+                jmxScriptId: data.jmxScriptId,
+                isActive: data.isActive,
             })
             .where(eq(schedules.id, Number(id)))
             .returning();
 
         if (!result) {
-            return NextResponse.json(
-                { success: false, error: "Schedule not found" },
-                { status: 404 }
-            );
+            return errorResponse("Schedule not found", 404);
         }
 
-        return NextResponse.json({ success: true, data: result });
+        return successResponse(result);
     } catch (error) {
-        return NextResponse.json(
-            { success: false, error: String(error) },
-            { status: 500 }
-        );
+        return errorResponse(error);
     }
 }
 
@@ -85,17 +79,11 @@ export async function DELETE(
             .returning();
 
         if (!deleted) {
-            return NextResponse.json(
-                { success: false, error: "Schedule not found" },
-                { status: 404 }
-            );
+            return errorResponse("Schedule not found", 404);
         }
 
-        return NextResponse.json({ success: true, message: "Schedule deleted" });
+        return successResponse({ message: "Schedule deleted" });
     } catch (error) {
-        return NextResponse.json(
-            { success: false, error: String(error) },
-            { status: 500 }
-        );
+        return errorResponse(error);
     }
 }

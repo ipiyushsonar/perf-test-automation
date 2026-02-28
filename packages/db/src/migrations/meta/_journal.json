@@ -8,6 +8,13 @@
       "when": 1771742537141,
       "tag": "0000_narrow_white_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1772169753087,
+      "tag": "0001_ordinary_the_stranger",
+      "breakpoints": true
     }
   ]
 }

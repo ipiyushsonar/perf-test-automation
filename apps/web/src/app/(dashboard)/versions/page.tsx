@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -31,6 +31,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Plus, GitBranch, Edit, Trash2 } from "lucide-react";
+import { useVersions, useCreateVersion, useUpdateVersion, useDeleteVersion } from "@/lib/api/queries";
 
 interface Version {
   id: number;
@@ -43,13 +44,15 @@ interface Version {
 }
 
 export default function VersionsPage() {
-  const [versions, setVersions] = useState<Version[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: versions = [], isLoading } = useVersions();
+  const createVersion = useCreateVersion();
+  const updateVersion = useUpdateVersion();
+  const deleteVersion = useDeleteVersion();
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editingVersion, setEditingVersion] = useState<Version | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-
   const [formData, setFormData] = useState({
     version: "",
     displayName: "",
@@ -57,19 +60,7 @@ export default function VersionsPage() {
     description: "",
   });
 
-  const fetchVersions = async () => {
-    try {
-      const res = await fetch("/api/versions");
-      const data = await res.json();
-      if (data.success) setVersions(data.data);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchVersions();
-  }, []);
+  const isSubmitting = createVersion.isPending || updateVersion.isPending;
 
   const openCreate = () => {
     setEditingVersion(null);
@@ -88,29 +79,27 @@ export default function VersionsPage() {
     setDialogOpen(true);
   };
 
-  const handleSubmit = async () => {
-    const url = editingVersion ? `/api/versions/${editingVersion.id}` : "/api/versions";
-    const method = editingVersion ? "PUT" : "POST";
+  const handleSubmit = () => {
+    const onSuccess = () => setDialogOpen(false);
 
-    await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formData),
-    });
-
-    setDialogOpen(false);
-    fetchVersions();
+    if (editingVersion) {
+      updateVersion.mutate({ id: editingVersion.id, data: formData }, { onSuccess });
+    } else {
+      createVersion.mutate(formData, { onSuccess });
+    }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!deletingId) return;
-    await fetch(`/api/versions/${deletingId}`, { method: "DELETE" });
-    setDeleteDialogOpen(false);
-    setDeletingId(null);
-    fetchVersions();
+    deleteVersion.mutate(deletingId, {
+      onSuccess: () => {
+        setDeleteDialogOpen(false);
+        setDeletingId(null);
+      },
+    });
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-40" />
@@ -252,7 +241,9 @@ export default function VersionsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSubmit}>{editingVersion ? "Save" : "Create"}</Button>
+            <Button onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting ? "Saving..." : editingVersion ? "Save" : "Create"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -267,7 +258,9 @@ export default function VersionsPage() {
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDelete}>Delete</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleteVersion.isPending}>
+              {deleteVersion.isPending ? "Deleting..." : "Delete"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

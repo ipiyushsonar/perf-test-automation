@@ -1,5 +1,6 @@
-import { sqliteTable, text, integer, real, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, uniqueIndex, type AnySQLiteColumn } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+import { jmxScripts } from "./jmx-scripts";
 
 export const scenarios = sqliteTable("scenarios", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -16,13 +17,16 @@ export const scenarios = sqliteTable("scenarios", {
   cooldownSeconds: integer("cooldown_seconds").default(900), // 15 min
 
   // JMX script reference
-  defaultJmxScriptId: integer("default_jmx_script_id"),
+  defaultJmxScriptId: integer("default_jmx_script_id").references((): AnySQLiteColumn => jmxScripts.id),
 
   // Configuration (JSON)
   config: text("config", { mode: "json" }),
 
   isActive: integer("is_active", { mode: "boolean" }).default(true),
   createdAt: integer("created_at", { mode: "timestamp" }).default(
+    sql`(unixepoch())`
+  ),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).default(
     sql`(unixepoch())`
   ),
 });

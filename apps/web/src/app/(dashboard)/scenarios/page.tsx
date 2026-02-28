@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -24,6 +24,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Plus, Target, Edit, Trash2 } from "lucide-react";
+import { useScenarios, useCreateScenario, useUpdateScenario, useDeleteScenario } from "@/lib/api/queries";
 
 interface Scenario {
   id: number;
@@ -40,12 +41,17 @@ interface Scenario {
 }
 
 export default function ScenariosPage() {
-  const [scenarios, setScenarios] = useState<Scenario[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: scenarios = [], isLoading } = useScenarios();
+  const createScenario = useCreateScenario();
+  const updateScenario = useUpdateScenario();
+  const deleteScenario = useDeleteScenario();
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editingScenario, setEditingScenario] = useState<Scenario | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const isSubmitting = createScenario.isPending || updateScenario.isPending;
 
   // Form state
   const [formData, setFormData] = useState({
@@ -59,20 +65,6 @@ export default function ScenariosPage() {
     rampUpSeconds: 60,
     cooldownSeconds: 900,
   });
-
-  const fetchScenarios = async () => {
-    try {
-      const res = await fetch("/api/scenarios");
-      const data = await res.json();
-      if (data.success) setScenarios(data.data);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchScenarios();
-  }, []);
 
   const openCreate = () => {
     setEditingScenario(null);
@@ -106,31 +98,27 @@ export default function ScenariosPage() {
     setDialogOpen(true);
   };
 
-  const handleSubmit = async () => {
-    const url = editingScenario
-      ? `/api/scenarios/${editingScenario.id}`
-      : "/api/scenarios";
-    const method = editingScenario ? "PUT" : "POST";
+  const handleSubmit = () => {
+    const onSuccess = () => setDialogOpen(false);
 
-    await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formData),
-    });
-
-    setDialogOpen(false);
-    fetchScenarios();
+    if (editingScenario) {
+      updateScenario.mutate({ id: editingScenario.id, data: formData }, { onSuccess });
+    } else {
+      createScenario.mutate(formData, { onSuccess });
+    }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!deletingId) return;
-    await fetch(`/api/scenarios/${deletingId}`, { method: "DELETE" });
-    setDeleteDialogOpen(false);
-    setDeletingId(null);
-    fetchScenarios();
+    deleteScenario.mutate(deletingId, {
+      onSuccess: () => {
+        setDeleteDialogOpen(false);
+        setDeletingId(null);
+      },
+    });
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -373,8 +361,8 @@ export default function ScenariosPage() {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit}>
-              {editingScenario ? "Save Changes" : "Create Scenario"}
+            <Button onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting ? "Saving..." : editingScenario ? "Save Changes" : "Create Scenario"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -397,8 +385,8 @@ export default function ScenariosPage() {
             >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              Delete
+            <Button variant="destructive" onClick={handleDelete} disabled={deleteScenario.isPending}>
+              {deleteScenario.isPending ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>
