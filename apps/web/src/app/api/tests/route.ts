@@ -43,11 +43,11 @@ export async function POST(request: NextRequest) {
         versionId: data.versionId,
         jmxScriptId: data.jmxScriptId,
         baselineId: data.baselineId ?? null,
-        runnerType: data.runnerType,
-        runnerConfig: data.runnerConfig,
+        runnerType: data.runnerType ?? "local",
+        runnerConfig: data.runnerConfig ?? null,
         userCount: data.userCount,
         durationMinutes: data.durationMinutes,
-        rampUpSeconds: data.rampUpSeconds,
+        rampUpSeconds: data.rampUpSeconds ?? null,
         status: "pending",
       })
       .returning();
