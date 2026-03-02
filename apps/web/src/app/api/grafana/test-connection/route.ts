@@ -1,38 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GrafanaClient, type GrafanaConfig } from "@perf-test/grafana-client";
-import { getDb, settings } from "@perf-test/db";
-import { eq } from "drizzle-orm";
+import { GrafanaClient } from "@perf-test/grafana-client";
+import { requireAdmin } from "@/lib/auth";
+import { grafanaTestSchema } from "@/lib/validation";
+import { validateBody } from "@/lib/api-utils";
+import { validateAllowedUrl } from "@/lib/url-guard";
+import { getSettingsCategory } from "@/lib/settings";
 
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
     try {
+        const session = requireAdmin(request);
+        if (session instanceof NextResponse) return session;
         const body = await request.json();
-        const { url, apiToken } = body;
+        const validation = validateBody(grafanaTestSchema, body);
+        if (!validation.success) return validation.response;
+        const { url, apiToken } = validation.data;
 
         // Use provided values or fall back to saved settings
         let grafanaUrl = url;
         let grafanaToken = apiToken;
 
         if (!grafanaUrl || !grafanaToken) {
-            const db = getDb();
-            const grafanaSettings = await db
-                .select()
-                .from(settings)
-                .where(eq(settings.category, "grafana"));
+            const config = await getSettingsCategory("grafana");
 
-            const config: Record<string, string> = {};
-            for (const s of grafanaSettings) {
-                config[s.key] = typeof s.value === "string" ? JSON.parse(s.value) : s.value;
-            }
-
-            grafanaUrl = grafanaUrl || config.url;
-            grafanaToken = grafanaToken || config.apiToken;
+            grafanaUrl = grafanaUrl || (config.url as string | undefined);
+            grafanaToken = grafanaToken || (config.apiToken as string | undefined);
         }
 
         if (!grafanaUrl || !grafanaToken) {
             return NextResponse.json(
                 { success: false, error: "Grafana URL and API token are required" },
+                { status: 400 }
+            );
+        }
+
+        const urlValidation = validateAllowedUrl(grafanaUrl);
+        if (!urlValidation.ok) {
+            return NextResponse.json(
+                { success: false, error: urlValidation.error },
                 { status: 400 }
             );
         }

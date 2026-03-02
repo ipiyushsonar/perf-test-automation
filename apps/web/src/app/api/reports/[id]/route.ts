@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, reports } from "@perf-test/db";
 import { eq } from "drizzle-orm";
+import { requireAdmin, requireSession } from "@/lib/auth";
+import { idParamSchema } from "@/lib/validation";
+import { validateParams } from "@/lib/api-utils";
 
 export const runtime = "nodejs";
 
@@ -9,15 +12,12 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = requireSession(request);
+    if (session instanceof NextResponse) return session;
     const { id } = await params;
-    const reportId = parseInt(id, 10);
-
-    if (isNaN(reportId)) {
-      return NextResponse.json(
-        { success: false, error: "Invalid report ID" },
-        { status: 400 }
-      );
-    }
+    const validation = validateParams(idParamSchema, { id });
+    if (!validation.success) return validation.response;
+    const reportId = validation.data.id;
 
     const db = getDb();
     const [report] = await db
@@ -51,15 +51,12 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = requireAdmin(request);
+    if (session instanceof NextResponse) return session;
     const { id } = await params;
-    const reportId = parseInt(id, 10);
-
-    if (isNaN(reportId)) {
-      return NextResponse.json(
-        { success: false, error: "Invalid report ID" },
-        { status: 400 }
-      );
-    }
+    const validation = validateParams(idParamSchema, { id });
+    if (!validation.success) return validation.response;
+    const reportId = validation.data.id;
 
     const db = getDb();
     const [deleted] = await db

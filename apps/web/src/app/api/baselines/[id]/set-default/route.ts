@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, baselines } from "@perf-test/db";
 import { eq } from "drizzle-orm";
+import { requireAdmin } from "@/lib/auth";
+import { idParamSchema } from "@/lib/validation";
+import { validateParams } from "@/lib/api-utils";
 
 export async function POST(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const session = requireAdmin(request);
+        if (session instanceof NextResponse) return session;
         const { id } = await params;
+        const validation = validateParams(idParamSchema, { id });
+        if (!validation.success) return validation.response;
         const db = getDb();
 
         // Unset all existing defaults
@@ -20,7 +27,7 @@ export async function POST(
         const [result] = await db
             .update(baselines)
             .set({ isDefault: true })
-            .where(eq(baselines.id, Number(id)))
+            .where(eq(baselines.id, validation.data.id))
             .returning();
 
         if (!result) {

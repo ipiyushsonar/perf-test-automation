@@ -3,9 +3,12 @@ import { getDb, schedules } from "@perf-test/db";
 import { desc } from "drizzle-orm";
 import { createScheduleSchema } from "@/lib/validation";
 import { validateBody, successResponse, errorResponse } from "@/lib/api-utils";
+import { requireAdmin, requireSession } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
+        const session = requireSession(request);
+        if (session instanceof Response) return session;
         const db = getDb();
         const allSchedules = await db
             .select()
@@ -20,6 +23,8 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
     try {
+        const session = requireAdmin(request);
+        if (session instanceof Response) return session;
         const db = getDb();
         const body = await request.json();
 

@@ -3,18 +3,25 @@ import { getDb, versions } from "@perf-test/db";
 import { eq } from "drizzle-orm";
 import { updateVersionSchema } from "@/lib/validation";
 import { validateBody, successResponse, errorResponse } from "@/lib/api-utils";
+import { requireAdmin, requireSession } from "@/lib/auth";
+import { idParamSchema } from "@/lib/validation";
+import { validateParams } from "@/lib/api-utils";
 
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const session = requireSession(request);
+        if (session instanceof Response) return session;
         const { id } = await params;
+        const validation = validateParams(idParamSchema, { id });
+        if (!validation.success) return validation.response;
         const db = getDb();
         const [version] = await db
             .select()
             .from(versions)
-            .where(eq(versions.id, Number(id)))
+            .where(eq(versions.id, validation.data.id))
             .limit(1);
 
         if (!version) {
@@ -32,7 +39,11 @@ export async function PUT(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const session = requireAdmin(request);
+        if (session instanceof Response) return session;
         const { id } = await params;
+        const idValidation = validateParams(idParamSchema, { id });
+        if (!idValidation.success) return idValidation.response;
         const db = getDb();
         const body = await request.json();
 
@@ -48,7 +59,7 @@ export async function PUT(
                 releaseDate: data.releaseDate ? new Date(data.releaseDate) : undefined,
                 description: data.description,
             })
-            .where(eq(versions.id, Number(id)))
+            .where(eq(versions.id, idValidation.data.id))
             .returning();
 
         if (!result) {
@@ -66,12 +77,16 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const session = requireAdmin(request);
+        if (session instanceof Response) return session;
         const { id } = await params;
+        const validation = validateParams(idParamSchema, { id });
+        if (!validation.success) return validation.response;
         const db = getDb();
 
         const [deleted] = await db
             .delete(versions)
-            .where(eq(versions.id, Number(id)))
+            .where(eq(versions.id, validation.data.id))
             .returning();
 
         if (!deleted) {

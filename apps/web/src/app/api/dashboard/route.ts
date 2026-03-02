@@ -1,10 +1,13 @@
 import { getDb } from "@perf-test/db";
 import { testRuns, scenarios, reports } from "@perf-test/db";
 import { sql, eq, desc } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { requireSession } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const session = requireSession(request);
+    if (session instanceof NextResponse) return session;
     const db = getDb();
 
     // Count tests by status

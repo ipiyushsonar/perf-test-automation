@@ -1,22 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { DashboardManager, type GrafanaConfig } from "@perf-test/grafana-client";
-import { getDb, settings, grafanaSnapshots } from "@perf-test/db";
-import { eq } from "drizzle-orm";
+import { getDb, grafanaSnapshots } from "@perf-test/db";
 import { join } from "path";
+import { requireAdmin } from "@/lib/auth";
+import { grafanaCaptureSchema } from "@/lib/validation";
+import { validateBody } from "@/lib/api-utils";
+import { validateAllowedUrl } from "@/lib/url-guard";
+import { getSettingsCategory } from "@/lib/settings";
 
 export const runtime = "nodejs";
 
 async function getGrafanaConfig(): Promise<GrafanaConfig | null> {
-    const db = getDb();
-    const grafanaSettings = await db
-        .select()
-        .from(settings)
-        .where(eq(settings.category, "grafana"));
-
-    const config: Record<string, string> = {};
-    for (const s of grafanaSettings) {
-        config[s.key] = typeof s.value === "string" ? JSON.parse(s.value) : s.value;
-    }
+    const config = await getSettingsCategory("grafana");
 
     if (!config.url || !config.apiToken) return null;
 
@@ -28,6 +23,8 @@ async function getGrafanaConfig(): Promise<GrafanaConfig | null> {
 
 export async function POST(request: NextRequest) {
     try {
+        const session = requireAdmin(request);
+        if (session instanceof NextResponse) return session;
         const config = await getGrafanaConfig();
         if (!config) {
             return NextResponse.json(
@@ -36,18 +33,22 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        const urlValidation = validateAllowedUrl(config.url);
+        if (!urlValidation.ok) {
+            return NextResponse.json(
+                { success: false, error: urlValidation.error },
+                { status: 400 }
+            );
+        }
+
         const body = await request.json();
-        const {
-            dashboardUid,
-            testRunId,
-            reportId,
-            from,
-            to,
-            panelIds,
-            width,
-            height,
-            theme,
-        } = body;
+        const validation = validateBody(grafanaCaptureSchema, body);
+        if (!validation.success) return validation.response;
+        const data = validation.data;
+        const { dashboardUid, testRunId, reportId, from, to, panelIds, width, height, theme } = data;
+
+        const fromValue = from !== undefined ? String(from) : undefined;
+        const toValue = to !== undefined ? String(to) : undefined;
 
         if (!dashboardUid) {
             return NextResponse.json(
@@ -61,8 +62,8 @@ export async function POST(request: NextRequest) {
 
         const manager = new DashboardManager(config);
         const results = await manager.captureAndSave(dashboardUid, outputDir, {
-            from,
-            to,
+            from: fromValue,
+            to: toValue,
             panelIds,
             width,
             height,
@@ -84,8 +85,8 @@ export async function POST(request: NextRequest) {
                     dashboardName: dashboardUid,
                     panelId: result.panelId,
                     panelTitle: result.panelTitle,
-                    timeFrom: from ? new Date(Number(from)) : null,
-                    timeTo: to ? new Date(Number(to)) : null,
+                    timeFrom: fromValue ? new Date(Number(fromValue)) : null,
+                    timeTo: toValue ? new Date(Number(toValue)) : null,
                     imagePath: result.filePath,
                     imageSize: result.imageSize,
                 })

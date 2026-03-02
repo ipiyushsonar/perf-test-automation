@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getExecutor } from "@perf-test/test-runner";
+import { requireAdmin, requireSession } from "@/lib/auth";
+import { idParamSchema } from "@/lib/validation";
+import { validateParams } from "@/lib/api-utils";
 
 export const runtime = "nodejs";
 
@@ -11,15 +14,12 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = requireSession(_request);
+    if (session instanceof NextResponse) return session;
     const { id } = await params;
-    const scriptId = parseInt(id, 10);
-
-    if (isNaN(scriptId)) {
-      return NextResponse.json(
-        { success: false, error: "Invalid script ID" },
-        { status: 400 }
-      );
-    }
+    const validation = validateParams(idParamSchema, { id });
+    if (!validation.success) return validation.response;
+    const scriptId = validation.data.id;
 
     const executor = getExecutor();
     const scriptManager = executor.getScriptManager();
@@ -49,15 +49,12 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = requireAdmin(_request);
+    if (session instanceof NextResponse) return session;
     const { id } = await params;
-    const scriptId = parseInt(id, 10);
-
-    if (isNaN(scriptId)) {
-      return NextResponse.json(
-        { success: false, error: "Invalid script ID" },
-        { status: 400 }
-      );
-    }
+    const validation = validateParams(idParamSchema, { id });
+    if (!validation.success) return validation.response;
+    const scriptId = validation.data.id;
 
     const executor = getExecutor();
     const scriptManager = executor.getScriptManager();

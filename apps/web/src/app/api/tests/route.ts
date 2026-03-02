@@ -1,16 +1,20 @@
 import { getDb } from "@perf-test/db";
 import { testRuns } from "@perf-test/db";
 import { desc } from "drizzle-orm";
-import { NextRequest, NextResponse } from "next/server";
-import { createTestSchema } from "@/lib/validation";
-import { validateBody, successResponse, errorResponse } from "@/lib/api-utils";
+import { NextRequest } from "next/server";
+import { createTestSchema, paginationSchema } from "@/lib/validation";
+import { validateBody, validateQuery, successResponse, errorResponse } from "@/lib/api-utils";
+import { requireSession } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   try {
+    const session = requireSession(request);
+    if (session instanceof Response) return session;
     const db = getDb();
     const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get("limit") || "50");
-    const offset = parseInt(searchParams.get("offset") || "0");
+    const pagination = validateQuery(paginationSchema, searchParams);
+    if (!pagination.success) return pagination.response;
+    const { limit, offset } = pagination.data;
 
     const allTests = await db
       .select()
@@ -27,6 +31,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = requireSession(request);
+    if (session instanceof Response) return session;
     const db = getDb();
     const body = await request.json();
 
@@ -49,6 +55,7 @@ export async function POST(request: NextRequest) {
         durationMinutes: data.durationMinutes,
         rampUpSeconds: data.rampUpSeconds ?? null,
         status: "pending",
+        createdBy: session.user,
       })
       .returning();
 

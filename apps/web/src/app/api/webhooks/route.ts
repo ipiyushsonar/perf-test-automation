@@ -1,4 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getDb, settings } from "@perf-test/db";
+import { eq } from "drizzle-orm";
+import { validateBody } from "@/lib/api-utils";
+import { webhookSchema } from "@/lib/validation";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -8,6 +13,13 @@ export const runtime = "nodejs";
  */
 export async function POST(request: NextRequest) {
     try {
+        const rateKey = `webhook:${request.headers.get("x-forwarded-for") || "unknown"}`;
+        if (!rateLimit(rateKey, 30, 60_000)) {
+            return NextResponse.json(
+                { success: false, error: "Rate limit exceeded" },
+                { status: 429 }
+            );
+        }
         // Validate API token from Authorization header
         const authHeader = request.headers.get("authorization");
         if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -19,8 +31,6 @@ export async function POST(request: NextRequest) {
 
         const token = authHeader.slice(7);
 
-        // TODO: Validate token against stored API tokens in settings
-        // For now, accept any non-empty token
         if (!token) {
             return NextResponse.json(
                 { success: false, error: "Invalid API token" },
@@ -28,7 +38,27 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        const db = getDb();
+        const stored = await db
+            .select()
+            .from(settings)
+            .where(eq(settings.category, "webhook"));
+
+        const config: Record<string, string> = {};
+        for (const s of stored) {
+            config[s.key] = typeof s.value === "string" ? JSON.parse(s.value) : s.value;
+        }
+
+        if (!config.secret || config.secret !== token) {
+            return NextResponse.json(
+                { success: false, error: "Invalid API token" },
+                { status: 401 }
+            );
+        }
+
         const body = await request.json();
+        const validation = validateBody(webhookSchema, body);
+        if (!validation.success) return validation.response;
         const {
             scenarioId,
             versionId,
@@ -36,17 +66,7 @@ export async function POST(request: NextRequest) {
             userCount,
             durationMinutes,
             callback_url,
-        } = body;
-
-        if (!scenarioId || !versionId) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    error: "scenarioId and versionId are required",
-                },
-                { status: 400 }
-            );
-        }
+        } = validation.data;
 
         // Create the test run via internal API
         const testRes = await fetch(
