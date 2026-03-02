@@ -56,3 +56,4 @@ export type AppDatabase = ReturnType<typeof getDb>;
 // Re-export everything
 export * from "./schema";
 export { schema };
+export * from "./secrets";
