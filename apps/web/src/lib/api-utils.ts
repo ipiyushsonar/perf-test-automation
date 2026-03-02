@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import type { ZodSchema } from "zod";
+import type { ZodSchema, ZodTypeAny } from "zod";
 
 /**
  * Shared API response type.
@@ -32,6 +32,64 @@ export function validateBody<T>(
             ),
         };
     }
+    return { success: true, data: result.data };
+}
+
+/**
+ * Validate query params against a Zod schema.
+ */
+export function validateQuery<T extends ZodTypeAny>(
+    schema: T,
+    query: URLSearchParams
+):
+    | { success: true; data: ReturnType<T["parse"]> }
+    | { success: false; response: NextResponse } {
+    const raw: Record<string, string> = {};
+    query.forEach((value, key) => {
+        raw[key] = value;
+    });
+    const result = schema.safeParse(raw);
+    if (!result.success) {
+        return {
+            success: false,
+            response: NextResponse.json(
+                {
+                    success: false,
+                    error: "Validation failed",
+                    details: result.error.flatten(),
+                },
+                { status: 400 }
+            ),
+        };
+    }
+
+    return { success: true, data: result.data };
+}
+
+/**
+ * Validate route params against a Zod schema.
+ */
+export function validateParams<T extends ZodTypeAny>(
+    schema: T,
+    params: Record<string, string | undefined>
+):
+    | { success: true; data: ReturnType<T["parse"]> }
+    | { success: false; response: NextResponse } {
+    const result = schema.safeParse(params);
+    if (!result.success) {
+        return {
+            success: false,
+            response: NextResponse.json(
+                {
+                    success: false,
+                    error: "Validation failed",
+                    details: result.error.flatten(),
+                },
+                { status: 400 }
+            ),
+        };
+    }
+
     return { success: true, data: result.data };
 }
 
