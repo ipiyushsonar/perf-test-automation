@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb, reports } from "@perf-test/db";
 import { eq } from "drizzle-orm";
 import { existsSync, readFileSync } from "fs";
-import { basename } from "path";
+import { basename, resolve } from "path";
 import {
   generateReport,
   generateHtmlReport,
 } from "@perf-test/report-generator";
+import { requireAdmin } from "@/lib/auth";
+import { idParamSchema } from "@/lib/validation";
+import { validateParams } from "@/lib/api-utils";
 
 export const runtime = "nodejs";
 
@@ -15,15 +18,12 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = requireAdmin(request);
+    if (session instanceof NextResponse) return session;
     const { id } = await params;
-    const reportId = parseInt(id, 10);
-
-    if (isNaN(reportId)) {
-      return NextResponse.json(
-        { success: false, error: "Invalid report ID" },
-        { status: 400 }
-      );
-    }
+    const validation = validateParams(idParamSchema, { id });
+    if (!validation.success) return validation.response;
+    const reportId = validation.data.id;
 
     const db = getDb();
     const [report] = await db
@@ -39,14 +39,25 @@ export async function GET(
       );
     }
 
+    const dataDir = process.env.DATA_DIR || "./data";
+    const reportsRoot = resolve(dataDir, "reports", "html");
+
     if (report.htmlFilePath && existsSync(report.htmlFilePath)) {
-      const htmlContent = readFileSync(report.htmlFilePath, "utf-8");
-      const filename = basename(report.htmlFilePath);
+      const resolvedPath = resolve(report.htmlFilePath);
+      if (!resolvedPath.startsWith(reportsRoot)) {
+        return NextResponse.json(
+          { success: false, error: "Invalid report path" },
+          { status: 400 }
+        );
+      }
+      const htmlContent = readFileSync(resolvedPath, "utf-8");
+      const filename = basename(resolvedPath);
 
       return new NextResponse(htmlContent, {
         headers: {
           "Content-Type": "text/html",
           "Content-Disposition": `attachment; filename="${filename}"`,
+          "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:;",
         },
       });
     }
@@ -73,6 +84,7 @@ export async function GET(
       headers: {
         "Content-Type": "text/html",
         "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:;",
       },
     });
   } catch (error) {

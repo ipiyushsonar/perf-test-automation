@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
     Card,
     CardContent,
@@ -32,6 +32,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Plus, Clock, Trash2, Edit, Power } from "lucide-react";
+import { useSchedules, useCreateSchedule, useUpdateSchedule, useDeleteSchedule } from "@/lib/api/queries";
 
 interface Schedule {
     id: number;
@@ -46,12 +47,17 @@ interface Schedule {
 }
 
 export default function SchedulesPage() {
-    const [schedules, setSchedules] = useState<Schedule[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { data: schedules = [], isLoading } = useSchedules();
+    const createSchedule = useCreateSchedule();
+    const updateSchedule = useUpdateSchedule();
+    const deleteSchedule = useDeleteSchedule();
+
     const [dialogOpen, setDialogOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
     const [deletingId, setDeletingId] = useState<number | null>(null);
+
+    const isSubmitting = createSchedule.isPending || updateSchedule.isPending;
 
     const [formData, setFormData] = useState({
         name: "",
@@ -59,18 +65,6 @@ export default function SchedulesPage() {
         cronExpression: "0 0 * * 1",
         isActive: true,
     });
-
-    const fetchSchedules = async () => {
-        try {
-            const res = await fetch("/api/schedules");
-            const data = await res.json();
-            if (data.success) setSchedules(data.data);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => { fetchSchedules(); }, []);
 
     const openCreate = () => {
         setEditingSchedule(null);
@@ -89,48 +83,41 @@ export default function SchedulesPage() {
         setDialogOpen(true);
     };
 
-    const handleSubmit = async () => {
-        const url = editingSchedule ? `/api/schedules/${editingSchedule.id}` : "/api/schedules";
-        const method = editingSchedule ? "PUT" : "POST";
+    const handleSubmit = () => {
+        const onSuccess = () => setDialogOpen(false);
 
-        await fetch(url, {
-            method,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(formData),
-        });
-        setDialogOpen(false);
-        fetchSchedules();
+        if (editingSchedule) {
+            updateSchedule.mutate({ id: editingSchedule.id, data: formData }, { onSuccess });
+        } else {
+            createSchedule.mutate(formData, { onSuccess });
+        }
     };
 
-    const handleToggle = async (id: number, isActive: boolean) => {
-        await fetch(`/api/schedules/${id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ isActive }),
-        });
-        fetchSchedules();
+    const handleToggle = (id: number, isActive: boolean) => {
+        updateSchedule.mutate({ id, data: { isActive } });
     };
 
-    const handleDelete = async () => {
+    const handleDelete = () => {
         if (!deletingId) return;
-        await fetch(`/api/schedules/${deletingId}`, { method: "DELETE" });
-        setDeleteDialogOpen(false);
-        setDeletingId(null);
-        fetchSchedules();
+        deleteSchedule.mutate(deletingId, {
+            onSuccess: () => {
+                setDeleteDialogOpen(false);
+                setDeletingId(null);
+            },
+        });
     };
 
     const describeCron = (cron: string | null): string => {
         if (!cron) return "Not set";
         const parts = cron.split(" ");
         if (parts.length !== 5) return cron;
-        // Basic human-readable descriptions
         if (cron === "0 0 * * *") return "Daily at midnight";
         if (cron === "0 0 * * 1") return "Weekly on Monday";
         if (cron === "0 0 1 * *") return "Monthly on the 1st";
         return cron;
     };
 
-    if (loading) {
+    if (isLoading) {
         return <div className="space-y-6"><Skeleton className="h-8 w-40" /><Skeleton className="h-60" /></div>;
     }
 
@@ -232,7 +219,9 @@ export default function SchedulesPage() {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={handleSubmit}>{editingSchedule ? "Save" : "Create"}</Button>
+                        <Button onClick={handleSubmit} disabled={isSubmitting}>
+                            {isSubmitting ? "Saving..." : editingSchedule ? "Save" : "Create"}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -245,7 +234,9 @@ export default function SchedulesPage() {
                     </DialogHeader>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-                        <Button variant="destructive" onClick={handleDelete}>Delete</Button>
+                        <Button variant="destructive" onClick={handleDelete} disabled={deleteSchedule.isPending}>
+                            {deleteSchedule.isPending ? "Deleting..." : "Delete"}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

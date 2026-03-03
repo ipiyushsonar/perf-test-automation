@@ -1,21 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { GrafanaClient, type GrafanaConfig } from "@perf-test/grafana-client";
-import { getDb, settings } from "@perf-test/db";
-import { eq, and } from "drizzle-orm";
+import { requireAdmin } from "@/lib/auth";
+import { validateAllowedUrl } from "@/lib/url-guard";
+import { getSettingsCategory } from "@/lib/settings";
 
 export const runtime = "nodejs";
 
 async function getGrafanaConfig(): Promise<GrafanaConfig | null> {
-    const db = getDb();
-    const grafanaSettings = await db
-        .select()
-        .from(settings)
-        .where(eq(settings.category, "grafana"));
-
-    const config: Record<string, string> = {};
-    for (const s of grafanaSettings) {
-        config[s.key] = typeof s.value === "string" ? JSON.parse(s.value) : s.value;
-    }
+    const config = await getSettingsCategory("grafana");
 
     if (!config.url || !config.apiToken) return null;
 
@@ -25,12 +17,22 @@ async function getGrafanaConfig(): Promise<GrafanaConfig | null> {
     };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
+        const session = requireAdmin(request);
+        if (session instanceof NextResponse) return session;
         const config = await getGrafanaConfig();
         if (!config) {
             return NextResponse.json(
                 { success: false, error: "Grafana not configured" },
+                { status: 400 }
+            );
+        }
+
+        const urlValidation = validateAllowedUrl(config.url);
+        if (!urlValidation.ok) {
+            return NextResponse.json(
+                { success: false, error: urlValidation.error },
                 { status: 400 }
             );
         }

@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -19,6 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Upload, FileCode, Trash2, Download } from "lucide-react";
+import { useScripts, useUploadScript, useDeleteScript } from "@/lib/api/queries";
 
 interface JmxScript {
   id: number;
@@ -31,22 +31,11 @@ interface JmxScript {
 }
 
 export default function ScriptsPage() {
-  const [scripts, setScripts] = useState<JmxScript[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: scripts = [], isLoading } = useScripts();
+  const uploadScript = useUploadScript();
+  const deleteScript = useDeleteScript();
 
-  const fetchScripts = async () => {
-    try {
-      const res = await fetch("/api/scripts");
-      const data = await res.json();
-      if (data.success) setScripts(data.data);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { fetchScripts(); }, []);
-
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -54,17 +43,13 @@ export default function ScriptsPage() {
     formData.append("file", file);
     formData.append("name", file.name.replace(".jmx", ""));
 
-    await fetch("/api/scripts", {
-      method: "POST",
-      body: formData,
-    });
-
-    fetchScripts();
+    uploadScript.mutate(formData);
+    // Reset input so re-uploading same file works
+    e.target.value = "";
   };
 
-  const handleDelete = async (id: number) => {
-    await fetch(`/api/scripts/${id}`, { method: "DELETE" });
-    fetchScripts();
+  const handleDelete = (id: number) => {
+    deleteScript.mutate(id);
   };
 
   const formatFileSize = (bytes: number | null) => {
@@ -74,7 +59,7 @@ export default function ScriptsPage() {
     return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   };
 
-  if (loading) {
+  if (isLoading) {
     return <div className="space-y-6"><Skeleton className="h-8 w-40" /><Skeleton className="h-60" /></div>;
   }
 
@@ -85,10 +70,10 @@ export default function ScriptsPage() {
           <h1 className="text-3xl font-bold tracking-tight">JMX Scripts</h1>
           <p className="text-muted-foreground">Upload and manage JMeter test scripts</p>
         </div>
-        <Button asChild>
+        <Button asChild disabled={uploadScript.isPending}>
           <label className="cursor-pointer">
             <Upload className="mr-2 h-4 w-4" />
-            Upload Script
+            {uploadScript.isPending ? "Uploading..." : "Upload Script"}
             <input type="file" accept=".jmx" className="hidden" onChange={handleUpload} />
           </label>
         </Button>
@@ -122,13 +107,19 @@ export default function ScriptsPage() {
                     <TableCell className="font-medium font-mono">{s.name}</TableCell>
                     <TableCell>{s.description || "—"}</TableCell>
                     <TableCell>{formatFileSize(s.fileSize)}</TableCell>
-                    <TableCell>{new Date(s.uploadedAt).toLocaleDateString()}</TableCell>
+                    <TableCell>{s.uploadedAt ? new Date(s.uploadedAt).toLocaleDateString() : "—"}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" className="h-8 w-8">
                           <Download className="h-3 w-3" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(s.id)}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive"
+                          onClick={() => handleDelete(s.id)}
+                          disabled={deleteScript.isPending}
+                        >
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>

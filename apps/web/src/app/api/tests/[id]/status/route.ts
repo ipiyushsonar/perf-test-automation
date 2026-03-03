@@ -2,6 +2,9 @@ import { getDb, testRuns, testStatistics } from "@perf-test/db";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { getExecutor } from "@perf-test/test-runner";
+import { requireSession } from "@/lib/auth";
+import { idParamSchema } from "@/lib/validation";
+import { validateParams } from "@/lib/api-utils";
 
 export const runtime = "nodejs";
 
@@ -15,14 +18,12 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const testRunId = parseInt(id, 10);
+    const validation = validateParams(idParamSchema, { id });
+    if (!validation.success) return validation.response;
+    const testRunId = validation.data.id;
 
-    if (isNaN(testRunId)) {
-      return NextResponse.json(
-        { success: false, error: "Invalid test run ID" },
-        { status: 400 }
-      );
-    }
+    const session = requireSession(_request);
+    if (session instanceof NextResponse) return session;
 
     const db = getDb();
 

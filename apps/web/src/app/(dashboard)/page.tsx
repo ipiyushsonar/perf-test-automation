@@ -66,6 +66,7 @@ export default function DashboardPage() {
 
     // Check connections
     const checkConnections = async () => {
+      // Grafana
       try {
         const grafanaRes = await fetch("/api/grafana/test-connection", {
           method: "POST",
@@ -81,6 +82,36 @@ export default function DashboardPage() {
         }));
       } catch {
         setConnections((prev) => ({ ...prev, grafana: "not configured" }));
+      }
+
+      // InfluxDB
+      try {
+        const influxRes = await fetch("/api/settings?category=influxdb");
+        const influxData = await influxRes.json();
+        const hasUrl = influxData.success && influxData.data?.some?.(
+          (s: { key: string; value: unknown }) => s.key === "url" && s.value
+        );
+        setConnections((prev) => ({
+          ...prev,
+          influxdb: hasUrl ? "connected" : "not configured",
+        }));
+      } catch {
+        setConnections((prev) => ({ ...prev, influxdb: "not configured" }));
+      }
+
+      // Confluence
+      try {
+        const confRes = await fetch("/api/settings?category=confluence");
+        const confData = await confRes.json();
+        const hasUrl = confData.success && confData.data?.some?.(
+          (s: { key: string; value: unknown }) => s.key === "url" && s.value
+        );
+        setConnections((prev) => ({
+          ...prev,
+          confluence: hasUrl ? "connected" : "not configured",
+        }));
+      } catch {
+        setConnections((prev) => ({ ...prev, confluence: "not configured" }));
       }
     };
     checkConnections();

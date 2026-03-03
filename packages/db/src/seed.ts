@@ -186,6 +186,13 @@ if (existingSettings.length === 0) {
       value: JSON.stringify("./data"),
       description: "Base data directory",
     },
+    // Webhook
+    {
+      category: "webhook",
+      key: "secret",
+      value: JSON.stringify(""),
+      description: "Webhook shared secret token",
+    },
     {
       category: "general",
       key: "defaultCooldownSeconds",

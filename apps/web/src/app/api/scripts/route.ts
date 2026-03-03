@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getExecutor } from "@perf-test/test-runner";
+import { requireAdmin, requireSession } from "@/lib/auth";
+import { validateQuery } from "@/lib/api-utils";
+import { scenarioFilterSchema } from "@/lib/validation";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -9,14 +13,18 @@ export const runtime = "nodejs";
  */
 export async function GET(request: NextRequest) {
   try {
+    const session = requireSession(request);
+    if (session instanceof NextResponse) return session;
     const { searchParams } = new URL(request.url);
-    const scenarioId = searchParams.get("scenarioId");
+    const query = validateQuery(scenarioFilterSchema, searchParams);
+    if (!query.success) return query.response;
+    const scenarioId = query.data.scenarioId;
 
     const executor = getExecutor();
     const scriptManager = executor.getScriptManager();
 
     const scripts = await scriptManager.list(
-      scenarioId ? parseInt(scenarioId, 10) : undefined
+      scenarioId ?? undefined
     );
 
     return NextResponse.json({ success: true, data: scripts });
@@ -34,6 +42,15 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const session = requireAdmin(request);
+    if (session instanceof NextResponse) return session;
+    const rateKey = `scripts:upload:${session.user}`;
+    if (!rateLimit(rateKey, 10, 60_000)) {
+      return NextResponse.json(
+        { success: false, error: "Upload rate limit exceeded" },
+        { status: 429 }
+      );
+    }
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
 
@@ -69,6 +86,7 @@ export async function POST(request: NextRequest) {
       description,
       scenarioId,
       isDefault,
+      uploadedBy: session.user,
     });
 
     return NextResponse.json({ success: true, data: result }, { status: 201 });

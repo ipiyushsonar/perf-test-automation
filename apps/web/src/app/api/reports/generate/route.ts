@@ -5,13 +5,20 @@ import {
   generateAndSaveReport,
   type GenerateReportInput,
 } from "@perf-test/report-generator";
+import { requireAdmin } from "@/lib/auth";
+import { generateReportSchema } from "@/lib/validation";
+import { validateBody } from "@/lib/api-utils";
 
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   try {
+    const session = requireAdmin(request);
+    if (session instanceof NextResponse) return session;
     const body = await request.json();
 
+    const validation = validateBody(generateReportSchema, body);
+    if (!validation.success) return validation.response;
     const {
       name,
       testRunIds,
@@ -19,21 +26,7 @@ export async function POST(request: NextRequest) {
       type = "comparison",
       outputFormats = ["excel", "html"],
       thresholds,
-    } = body;
-
-    if (!testRunIds || !Array.isArray(testRunIds) || testRunIds.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "testRunIds is required and must be a non-empty array" },
-        { status: 400 }
-      );
-    }
-
-    if (!name || typeof name !== "string") {
-      return NextResponse.json(
-        { success: false, error: "name is required" },
-        { status: 400 }
-      );
-    }
+    } = validation.data;
 
     const db = getDb();
 
@@ -51,7 +44,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let resolvedBaselineId = baselineId;
+    let resolvedBaselineId = baselineId ?? undefined;
 
     if (!resolvedBaselineId && validTestRuns.length > 0) {
       const [defaultBaseline] = await db
@@ -69,7 +62,7 @@ export async function POST(request: NextRequest) {
       name,
       type,
       testRunIds,
-      baselineId: resolvedBaselineId,
+      baselineId: resolvedBaselineId ?? undefined,
       thresholds,
     };
 

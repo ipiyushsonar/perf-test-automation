@@ -1,21 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { ConfluenceClient, type ConfluenceConfig } from "@perf-test/confluence-client";
-import { getDb, settings } from "@perf-test/db";
-import { eq } from "drizzle-orm";
+import { requireAdmin } from "@/lib/auth";
+import { validateAllowedUrl } from "@/lib/url-guard";
+import { getSettingsCategory } from "@/lib/settings";
 
 export const runtime = "nodejs";
 
 async function getConfluenceConfig(): Promise<ConfluenceConfig | null> {
-    const db = getDb();
-    const confluenceSettings = await db
-        .select()
-        .from(settings)
-        .where(eq(settings.category, "confluence"));
-
-    const config: Record<string, string> = {};
-    for (const s of confluenceSettings) {
-        config[s.key] = typeof s.value === "string" ? JSON.parse(s.value) : s.value;
-    }
+    const config = await getSettingsCategory("confluence");
 
     if (!config.url || !config.username || !config.apiToken || !config.spaceKey) return null;
 
@@ -28,12 +20,22 @@ async function getConfluenceConfig(): Promise<ConfluenceConfig | null> {
     };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
+        const session = requireAdmin(request);
+        if (session instanceof NextResponse) return session;
         const config = await getConfluenceConfig();
         if (!config) {
             return NextResponse.json(
                 { success: false, error: "Confluence not configured" },
+                { status: 400 }
+            );
+        }
+
+        const urlValidation = validateAllowedUrl(config.url);
+        if (!urlValidation.ok) {
+            return NextResponse.json(
+                { success: false, error: urlValidation.error },
                 { status: 400 }
             );
         }

@@ -1,5 +1,9 @@
-import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, type AnySQLiteColumn } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+import { scenarios } from "./scenarios";
+import { versions } from "./versions";
+import { jmxScripts } from "./jmx-scripts";
+import { baselines } from "./baselines";
 
 export const testTypes = sqliteTable("test_types", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -13,11 +17,11 @@ export const testRuns = sqliteTable("test_runs", {
   name: text("name"),
 
   // References
-  scenarioId: integer("scenario_id").notNull(),
-  testTypeId: integer("test_type_id").notNull(),
-  versionId: integer("version_id").notNull(),
-  jmxScriptId: integer("jmx_script_id").notNull(),
-  baselineId: integer("baseline_id"),
+  scenarioId: integer("scenario_id").notNull().references(() => scenarios.id),
+  testTypeId: integer("test_type_id").notNull().references(() => testTypes.id),
+  versionId: integer("version_id").notNull().references(() => versions.id),
+  jmxScriptId: integer("jmx_script_id").notNull().references(() => jmxScripts.id),
+  baselineId: integer("baseline_id").references((): AnySQLiteColumn => baselines.id),
 
   // Execution config
   runnerType: text("runner_type").notNull(), // 'local' | 'ssh' | 'jenkins'
@@ -61,7 +65,7 @@ export const testRuns = sqliteTable("test_runs", {
 
 export const testStatistics = sqliteTable("test_statistics", {
   id: integer("id").primaryKey({ autoIncrement: true }),
-  testRunId: integer("test_run_id").notNull(),
+  testRunId: integer("test_run_id").notNull().references(() => testRuns.id),
 
   transactionName: text("transaction_name").notNull(),
   transactionLabel: text("transaction_label"),

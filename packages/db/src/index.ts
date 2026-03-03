@@ -38,6 +38,9 @@ function createDb() {
   const url = getDatabaseUrl();
   const client = createClient({ url });
 
+  // Enable SQLite foreign key enforcement (off by default)
+  client.execute("PRAGMA foreign_keys = ON");
+
   return drizzle(client, { schema });
 }
 
@@ -53,3 +56,4 @@ export type AppDatabase = ReturnType<typeof getDb>;
 // Re-export everything
 export * from "./schema";
 export { schema };
+export * from "./secrets";

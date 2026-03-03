@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb, reports } from "@perf-test/db";
 import { eq } from "drizzle-orm";
 import { existsSync, readFileSync } from "fs";
-import { basename } from "path";
+import { basename, resolve } from "path";
 import {
   generateReport,
   generateExcelReport,
 } from "@perf-test/report-generator";
+import { requireAdmin } from "@/lib/auth";
+import { idParamSchema } from "@/lib/validation";
+import { validateParams } from "@/lib/api-utils";
 
 export const runtime = "nodejs";
 
@@ -15,15 +18,12 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = requireAdmin(request);
+    if (session instanceof NextResponse) return session;
     const { id } = await params;
-    const reportId = parseInt(id, 10);
-
-    if (isNaN(reportId)) {
-      return NextResponse.json(
-        { success: false, error: "Invalid report ID" },
-        { status: 400 }
-      );
-    }
+    const validation = validateParams(idParamSchema, { id });
+    if (!validation.success) return validation.response;
+    const reportId = validation.data.id;
 
     const db = getDb();
     const [report] = await db
@@ -39,9 +39,19 @@ export async function GET(
       );
     }
 
+    const dataDir = process.env.DATA_DIR || "./data";
+    const reportsRoot = resolve(dataDir, "reports", "excel");
+
     if (report.excelFilePath && existsSync(report.excelFilePath)) {
-      const fileBuffer = readFileSync(report.excelFilePath);
-      const filename = basename(report.excelFilePath);
+      const resolvedPath = resolve(report.excelFilePath);
+      if (!resolvedPath.startsWith(reportsRoot)) {
+        return NextResponse.json(
+          { success: false, error: "Invalid report path" },
+          { status: 400 }
+        );
+      }
+      const fileBuffer = readFileSync(resolvedPath);
+      const filename = basename(resolvedPath);
 
       return new NextResponse(new Uint8Array(fileBuffer), {
         headers: {

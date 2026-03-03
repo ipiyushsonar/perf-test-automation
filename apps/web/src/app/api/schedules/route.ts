@@ -1,48 +1,53 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getDb, schedules } from "@perf-test/db";
 import { desc } from "drizzle-orm";
+import { createScheduleSchema } from "@/lib/validation";
+import { validateBody, successResponse, errorResponse } from "@/lib/api-utils";
+import { requireAdmin, requireSession } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
+        const session = requireSession(request);
+        if (session instanceof Response) return session;
         const db = getDb();
         const allSchedules = await db
             .select()
             .from(schedules)
             .orderBy(desc(schedules.createdAt));
 
-        return NextResponse.json({ success: true, data: allSchedules });
+        return successResponse(allSchedules);
     } catch (error) {
-        return NextResponse.json(
-            { success: false, error: String(error) },
-            { status: 500 }
-        );
+        return errorResponse(error);
     }
 }
 
 export async function POST(request: NextRequest) {
     try {
+        const session = requireAdmin(request);
+        if (session instanceof Response) return session;
         const db = getDb();
         const body = await request.json();
+
+        const validation = validateBody(createScheduleSchema, body);
+        if (!validation.success) return validation.response;
+        const data = validation.data;
 
         const [result] = await db
             .insert(schedules)
             .values({
-                name: body.name,
-                description: body.description,
-                cronExpression: body.cronExpression,
-                scenarioId: body.scenarioId,
-                testTypeId: body.testTypeId,
-                versionId: body.versionId,
-                jmxScriptId: body.jmxScriptId,
-                isActive: body.isActive ?? true,
+                name: data.name,
+                description: data.description,
+                cronExpression: data.cronExpression,
+                scenarioId: data.scenarioId,
+                testTypeId: data.testTypeId,
+                versionId: data.versionId,
+                jmxScriptId: data.jmxScriptId,
+                isActive: data.isActive,
             })
             .returning();
 
-        return NextResponse.json({ success: true, data: result }, { status: 201 });
+        return successResponse(result, 201);
     } catch (error) {
-        return NextResponse.json(
-            { success: false, error: String(error) },
-            { status: 500 }
-        );
+        return errorResponse(error);
     }
 }

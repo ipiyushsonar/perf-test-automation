@@ -2,6 +2,9 @@ import { NextRequest } from "next/server";
 import { getDb, testRuns, baselines } from "@perf-test/db";
 import { eq } from "drizzle-orm";
 import { getExecutor } from "@perf-test/test-runner";
+import { requireSession } from "@/lib/auth";
+import { idParamSchema } from "@/lib/validation";
+import { validateParams } from "@/lib/api-utils";
 import {
   getInfluxClient,
   getTransactionMetrics,
@@ -12,6 +15,8 @@ import type { AggregateMetric, BaselineComparison } from "@perf-test/types";
 export const runtime = "nodejs";
 
 const REFRESH_INTERVAL_MS = 5000;
+const HEARTBEAT_INTERVAL_MS = 15000;
+const MAX_STREAM_MS = 30 * 60 * 1000;
 
 interface SSEEvent {
   type: string;
@@ -103,11 +108,12 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const testRunId = parseInt(id, 10);
+  const validation = validateParams(idParamSchema, { id });
+  if (!validation.success) return validation.response;
+  const testRunId = validation.data.id;
 
-  if (isNaN(testRunId)) {
-    return new Response("Invalid test run ID", { status: 400 });
-  }
+  const session = requireSession(request);
+  if (session instanceof Response) return session;
 
   const db = getDb();
   const [testRun] = await db
@@ -135,6 +141,8 @@ export async function GET(
     async start(controller) {
       const encoder = new TextEncoder();
 
+      let closed = false;
+
       const sendEvent = (event: SSEEvent) => {
         try {
           controller.enqueue(encoder.encode(serializeSSEEvent(event)));
@@ -151,6 +159,16 @@ export async function GET(
       const influxClient = getInfluxClient();
 
       let metricsInterval: ReturnType<typeof setInterval> | null = null;
+      let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+      const streamTimeout = setTimeout(() => {
+        sendEvent({ type: "complete", data: { status: "timeout" } });
+        try {
+          controller.close();
+        } catch {
+          // ignore
+        }
+        closed = true;
+      }, MAX_STREAM_MS);
 
       const fetchMetrics = async () => {
         try {
@@ -220,6 +238,7 @@ export async function GET(
               },
             });
             controller.close();
+            closed = true;
           }
         } catch (error) {
           console.error("Failed to fetch metrics:", error);
@@ -253,6 +272,11 @@ export async function GET(
       executor.on("log", onLog);
 
       metricsInterval = setInterval(fetchMetrics, REFRESH_INTERVAL_MS);
+      heartbeatInterval = setInterval(() => {
+        if (!closed) {
+          sendEvent({ type: "heartbeat", data: { timestamp: new Date().toISOString() } });
+        }
+      }, HEARTBEAT_INTERVAL_MS);
 
       fetchMetrics().catch(console.error);
 
@@ -260,6 +284,10 @@ export async function GET(
         if (metricsInterval) {
           clearInterval(metricsInterval);
         }
+        if (heartbeatInterval) {
+          clearInterval(heartbeatInterval);
+        }
+        clearTimeout(streamTimeout);
         executor.off("progress", onProgress);
         executor.off("log", onLog);
         try {

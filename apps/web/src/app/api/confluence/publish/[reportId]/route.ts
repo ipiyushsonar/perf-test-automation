@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ConfluencePublisher, type ConfluenceConfig } from "@perf-test/confluence-client";
-import { getDb, settings, reports } from "@perf-test/db";
+import { getDb, settings, reports, decryptSecret, isEncryptedSecret } from "@perf-test/db";
 import { eq } from "drizzle-orm";
+import { requireAdmin } from "@/lib/auth";
+import { validateAllowedUrl } from "@/lib/url-guard";
+import { idParamSchema } from "@/lib/validation";
+import { validateParams } from "@/lib/api-utils";
 
 export const runtime = "nodejs";
 
@@ -14,7 +18,13 @@ async function getConfluenceConfig(): Promise<ConfluenceConfig | null> {
 
     const config: Record<string, string> = {};
     for (const s of confluenceSettings) {
-        config[s.key] = typeof s.value === "string" ? JSON.parse(s.value) : s.value;
+        const rawValue = typeof s.value === "string" ? s.value : JSON.stringify(s.value);
+        const parsedValue = typeof rawValue === "string" ? JSON.parse(rawValue) : rawValue;
+        if (typeof parsedValue === "string" && isEncryptedSecret(parsedValue)) {
+            config[s.key] = decryptSecret(parsedValue);
+        } else {
+            config[s.key] = parsedValue;
+        }
     }
 
     if (!config.url || !config.username || !config.apiToken || !config.spaceKey) return null;
@@ -33,7 +43,11 @@ export async function POST(
     { params }: { params: Promise<{ reportId: string }> }
 ) {
     try {
+        const session = requireAdmin(request);
+        if (session instanceof NextResponse) return session;
         const { reportId } = await params;
+        const validation = validateParams(idParamSchema, { id: reportId });
+        if (!validation.success) return validation.response;
         const config = await getConfluenceConfig();
 
         if (!config) {
@@ -43,11 +57,19 @@ export async function POST(
             );
         }
 
+        const urlValidation = validateAllowedUrl(config.url);
+        if (!urlValidation.ok) {
+            return NextResponse.json(
+                { success: false, error: urlValidation.error },
+                { status: 400 }
+            );
+        }
+
         const db = getDb();
         const [report] = await db
             .select()
             .from(reports)
-            .where(eq(reports.id, Number(reportId)))
+            .where(eq(reports.id, validation.data.id))
             .limit(1);
 
         if (!report) {
