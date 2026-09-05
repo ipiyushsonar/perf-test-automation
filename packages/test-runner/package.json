@@ -11,7 +11,7 @@
   "dependencies": {
     "@perf-test/types": "workspace:*",
     "@perf-test/db": "workspace:*",
-    "drizzle-orm": "^0.38.0",
+    "drizzle-orm": "^0.45.2",
     "ssh2": "^1.16.0"
   },
   "devDependencies": {
