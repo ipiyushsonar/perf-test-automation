@@ -90,7 +90,7 @@ export function ResponseTimeChart({
               tick={{ fontSize: 12 }}
             />
             <Tooltip
-              formatter={(value: number) => [`${value.toFixed(2)} ms`, ""]}
+              formatter={(value) => [`${Number(value).toFixed(2)} ms`, ""]}
               contentStyle={{
                 backgroundColor: "hsl(var(--popover))",
                 border: "1px solid hsl(var(--border))",
