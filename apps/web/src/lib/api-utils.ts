@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import type { ZodSchema, ZodTypeAny } from "zod";
+import type { ZodSchema, ZodTypeAny, output } from "zod";
 
 /**
  * Shared API response type.
@@ -42,7 +42,7 @@ export function validateQuery<T extends ZodTypeAny>(
     schema: T,
     query: URLSearchParams
 ):
-    | { success: true; data: ReturnType<T["parse"]> }
+    | { success: true; data: output<T> }
     | { success: false; response: NextResponse } {
     const raw: Record<string, string> = {};
     query.forEach((value, key) => {
@@ -73,7 +73,7 @@ export function validateParams<T extends ZodTypeAny>(
     schema: T,
     params: Record<string, string | undefined>
 ):
-    | { success: true; data: ReturnType<T["parse"]> }
+    | { success: true; data: output<T> }
     | { success: false; response: NextResponse } {
     const result = schema.safeParse(params);
     if (!result.success) {
