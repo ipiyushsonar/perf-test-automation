@@ -81,11 +81,11 @@ export function ThroughputChart({
               tick={{ fontSize: 12 }}
             />
             <Tooltip
-              formatter={(value: number, name: string) => {
+              formatter={(value, name) => {
                 if (name === "throughput") {
-                  return [`${value.toFixed(2)} req/s`, "Throughput"];
+                  return [`${Number(value).toFixed(2)} req/s`, "Throughput"];
                 }
-                return [value.toLocaleString(), "Samples"];
+                return [Number(value).toLocaleString(), "Samples"];
               }}
               contentStyle={{
                 backgroundColor: "hsl(var(--popover))",
