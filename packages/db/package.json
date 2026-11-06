@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@perf-test/types": "workspace:*",
-    "@libsql/client": "^0.17.4",
+    "@libsql/client": "^0.18.0",
     "drizzle-orm": "^0.45.4"
   },
   "devDependencies": {
