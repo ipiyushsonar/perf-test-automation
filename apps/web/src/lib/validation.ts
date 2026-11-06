@@ -12,7 +12,7 @@ export const createTestSchema = z.object({
     jmxScriptId: z.number().int().positive(),
     baselineId: z.number().int().positive().nullable().optional(),
     runnerType: z.enum(["local", "ssh", "jenkins"]).default("local"),
-    runnerConfig: z.record(z.unknown()).optional(),
+    runnerConfig: z.record(z.string(), z.unknown()).optional(),
     userCount: z.number().int().min(1).max(10000),
     durationMinutes: z.number().int().min(1).max(1440),
     rampUpSeconds: z.number().int().min(0).max(3600).optional(),
@@ -63,7 +63,7 @@ export const createScenarioSchema = z.object({
     rampUpSeconds: z.number().int().min(0).max(3600).optional(),
     cooldownSeconds: z.number().int().min(0).max(7200).optional(),
     defaultJmxScriptId: z.number().int().positive().nullable().optional(),
-    config: z.record(z.unknown()).optional(),
+    config: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const updateScenarioSchema = createScenarioSchema.partial();
@@ -78,7 +78,7 @@ export const generateReportSchema = z.object({
     baselineId: z.number().int().positive().nullable().optional(),
     type: z.enum(["comparison", "single", "baseline"]).default("comparison"),
     outputFormats: z.array(z.enum(["excel", "html"])).default(["excel", "html"]),
-    thresholds: z.record(z.number()).optional(),
+    thresholds: z.record(z.string(), z.number()).optional(),
 });
 
 // ==========================================
