@@ -178,7 +178,7 @@ export function Sidebar() {
       <Button
         variant="ghost"
         size="icon"
-        className="absolute -right-3 top-16 z-10 h-6 w-6 rounded-full border bg-background shadow-sm"
+        className="absolute -right-3 top-16 z-10 h-6 w-6 rounded-full border bg-background shadow-xs"
         onClick={() => setCollapsed(!collapsed)}
       >
         {collapsed ? (
