@@ -39,7 +39,7 @@ const nextConfig = {
         'canvas',
         'chart.js',
         ({ request }, callback) => {
-          if (/\.node$/.test(request)) {
+          if (/\.node$/.test(request) && !request.startsWith('react-server-dom-')) {
             return callback(null, `commonjs ${request}`);
           }
           callback();
